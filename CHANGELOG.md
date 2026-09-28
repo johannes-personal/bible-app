@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0
+
+- The book picker opens on the current book's chapters; "All books" goes back to the full list.
+- The translation picker is grouped like books and chapters: pick a language, then a translation. It opens on the current translation's language, suggests your languages first, and search still finds translations across all languages.
+
 ## 1.0.2
 
 - The page now leaves room for the audio options panel, so it no longer covers the chapter's Previous/Next buttons.

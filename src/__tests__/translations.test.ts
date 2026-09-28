@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Translation } from '../api'
-import { groupTranslations } from '../translations'
+import { groupTranslations, partitionLanguages } from '../translations'
 import { parseHash, hashFor } from '../route'
 
 const t = (id: string, language: string, languageEnglishName: string, name = id): Translation => ({
@@ -32,6 +32,16 @@ describe('groupTranslations', () => {
   it('filters by name or language', () => {
     expect(groupTranslations(all, [], 'folk').flatMap((g) => g.translations.map((x) => x.id))).toEqual(['swe_fol'])
     expect(groupTranslations(all, [], 'german').map((g) => g.language)).toEqual(['deu'])
+  })
+})
+
+describe('partitionLanguages', () => {
+  it('suggests preferred languages and the current one, keeping their order', () => {
+    const groups = groupTranslations(all, ['de'])
+    const { suggested, others } = partitionLanguages(groups, ['de'], 'afr')
+    expect(suggested.map((g) => g.language)).toEqual(['deu', 'eng', 'swe', 'afr'])
+    expect(others).toEqual([])
+    expect(partitionLanguages(groups, ['de']).others.map((g) => g.language)).toEqual(['afr'])
   })
 })
 
