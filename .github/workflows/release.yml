@@ -1,0 +1,32 @@
+name: Release
+
+# Pushing a version tag (e.g. v1.0.0) builds the site and publishes a GitHub release
+# with the static build attached.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Package build
+        run: cd dist && zip -r "../bible-app-${GITHUB_REF_NAME}.zip" .
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes=$(awk -v v="${GITHUB_REF_NAME#v}" '$0 ~ "^## \\[?"v"\\]?" {on=1; next} /^## / {on=0} on' CHANGELOG.md)
+          gh release create "$GITHUB_REF_NAME" "bible-app-${GITHUB_REF_NAME}.zip" \
+            --title "$GITHUB_REF_NAME" --notes "${notes:-Release $GITHUB_REF_NAME}"
