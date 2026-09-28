@@ -76,7 +76,9 @@ export function SettingsPanel({ settings, update, onClose }: Props) {
             checked={settings.redLetters}
             onChange={(e) => update({ redLetters: e.target.checked })}
           />
-          Words of Jesus in red <span className="muted">(where the translation marks them)</span>
+          <span>
+            Words of Jesus in red <span className="muted">(where the translation marks them)</span>
+          </span>
         </label>
       </div>
     </Sheet>

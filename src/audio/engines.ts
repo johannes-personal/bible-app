@@ -205,10 +205,15 @@ export class SpeechEngine implements Engine {
     if (s) this.cb.onUpdate({ index: s.verseIndex, progress: s.start / this.total })
   }
 
-  private speak() {
+  /**
+   * Speaks the current segment. `interrupt` stops whatever is being spoken first; it is
+   * false when moving on after a segment ends, because some voices fire `end` slightly
+   * before their audio finishes and cancelling then clips the last word (worse at high rates).
+   */
+  private speak(interrupt = true) {
     const synth = window.speechSynthesis
     const gen = ++this.generation
-    synth.cancel()
+    if (interrupt) synth.cancel()
     const s = this.segments[this.seg]
     if (!s) return
 
@@ -230,7 +235,7 @@ export class SpeechEngine implements Engine {
         this.cb.onEnded()
       } else {
         this.report()
-        this.speak()
+        this.speak(false)
       }
     }
     u.onerror = (e) => {

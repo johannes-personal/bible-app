@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useCallback, useState, type CSSProperties } from 'react'
 import type { Player } from '../audio/usePlayer'
 import type { Settings, UpdateSettings } from '../settings'
 import { Icon } from './Icon'
@@ -16,6 +16,21 @@ interface Props {
 
 const RATES = [0.75, 1, 1.25, 1.5, 1.75, 2]
 
+/**
+ * Publishes the bar's height as --player-h so the page leaves room for it at the bottom.
+ * The bar grows when the audio options are open, and would otherwise cover the chapter's
+ * previous/next buttons.
+ */
+function useHeightVariable() {
+  return useCallback((el: HTMLDivElement | null) => {
+    if (!el) return
+    const root = document.documentElement
+    const observer = new ResizeObserver(() => root.style.setProperty('--player-h', `${el.offsetHeight}px`))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+}
+
 function formatTime(s: number | undefined) {
   if (s === undefined || !Number.isFinite(s)) return '–:––'
   const m = Math.floor(s / 60)
@@ -25,6 +40,7 @@ function formatTime(s: number | undefined) {
 export function PlayerBar({ player, settings, update, verseCount, languageName, loading, onPrevious, onNext }: Props) {
   const { state, sources, sourceId, voices, voice, lang } = player
   const [open, setOpen] = useState(false)
+  const heightRef = useHeightVariable()
   // Value while the user drags the progress bar; committed on release.
   const [dragging, setDragging] = useState<number | null>(null)
 
@@ -40,7 +56,7 @@ export function PlayerBar({ player, settings, update, verseCount, languageName, 
 
   if (!sources.length) {
     return (
-      <div className="player player-empty">
+      <div ref={heightRef} className="player player-empty">
         <span className="muted">
           {loading ? 'Loading…' : `Audio isn't available for ${languageName} on this device.`}
         </span>
@@ -57,7 +73,7 @@ export function PlayerBar({ player, settings, update, verseCount, languageName, 
   }
 
   return (
-    <div className="player">
+    <div ref={heightRef} className="player">
       {open && (
         <div className="player-options">
           <label>

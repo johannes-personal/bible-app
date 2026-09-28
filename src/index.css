@@ -253,16 +253,18 @@ button:disabled {
 
 .line {
   display: block;
-  padding-left: 1.5em;
+  padding-left: 2em;
   text-indent: -1em;
+  border-radius: 4px;
+  transition: background-color 0.25s;
 }
 
 .line.poem-2 {
-  padding-left: 2.75em;
+  padding-left: 3.25em;
 }
 
 .line.poem-3 {
-  padding-left: 4em;
+  padding-left: 4.5em;
 }
 
 .verse {
@@ -272,7 +274,9 @@ button:disabled {
   box-decoration-break: clone;
 }
 
-.verse.current {
+/* Poem lines are blocks inside the verse's inline span, so they need the highlight too. */
+.verse.current,
+.verse.current .line {
   background: var(--accent-soft);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
@@ -281,7 +285,8 @@ button:disabled {
   cursor: pointer;
 }
 
-.verse.clickable:hover:not(.current) {
+.verse.clickable:hover:not(.current),
+.verse.clickable:hover:not(.current) .line {
   background: var(--surface-2);
 }
 
@@ -294,6 +299,14 @@ button:disabled {
   vertical-align: 0.5em;
   line-height: 0;
   user-select: none;
+}
+
+/* In poetry the verse starts with a block line, so an inline number would sit on a line of
+   its own. Take it out of the flow; it lands in the lines' left padding, beside the first line. */
+.poetry .vnum {
+  position: absolute;
+  margin-top: 0.95em;
+  line-height: 1;
 }
 
 .hide-verse-numbers .vnum {
@@ -945,7 +958,7 @@ button:disabled {
 .follow-button {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--player-h) + 16px + env(safe-area-inset-bottom));
+  bottom: calc(var(--player-h) + 16px);
   transform: translateX(-50%);
   z-index: 15;
   display: inline-flex;
