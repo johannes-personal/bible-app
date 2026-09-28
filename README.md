@@ -34,8 +34,7 @@ The build is a fully static site with relative paths, so `dist/` can be hosted a
 ## Deployment and releases
 
 - The site is hosted on Vercel, which deploys `main` to https://the-bible-reader.vercel.app on every push.
-- To cut a release, update `CHANGELOG.md` and the `version` in `package.json`, merge to `main`, then push a tag:
-  `git tag v1.1.0 && git push origin v1.1.0`. The Release workflow publishes a GitHub release with the built site attached.
+- To cut a release, bump the `version` in `package.json` and add a matching section to `CHANGELOG.md`, then merge to `main`. The Release workflow sees the new version, tags it (e.g. `v1.1.0`) and publishes a GitHub release with the built site attached.
 
 ## Project layout
 
