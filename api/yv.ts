@@ -12,6 +12,7 @@ export async function GET(request: Request): Promise<Response> {
   if (!key) return json({ error: 'YouVersion is not configured' }, 503)
 
   const url = new URL(request.url)
+  if (url.searchParams.has('catalog')) return catalog(key)
   const path = url.searchParams.get('path') ?? ''
   if (!ALLOWED.test(path)) return json({ error: 'Unsupported path' }, 400)
 
@@ -27,6 +28,56 @@ export async function GET(request: Request): Promise<Response> {
       'Content-Type': res.headers.get('Content-Type') ?? 'application/json',
       // Let Vercel's CDN cache successful responses for a day; Bible text rarely changes.
       'Cache-Control': res.ok ? 'public, s-maxage=86400, stale-while-revalidate=604800' : 'no-store',
+    },
+  })
+}
+
+interface Bible {
+  id: number
+  abbreviation: string
+  localized_abbreviation: string
+  title: string
+  localized_title: string
+  language_tag: string
+  books: string[]
+}
+
+/** A catalogue entry; `books` is the number of books rather than their list. */
+type CatalogEntry = Omit<Bible, 'books'> & { books: number }
+
+/**
+ * Every Bible available to the app key, trimmed to the fields the app needs. The API pages
+ * at most 99 per request, so this collects all pages here instead of in the browser.
+ */
+async function catalog(key: string): Promise<Response> {
+  const bibles: CatalogEntry[] = []
+  let token: string | undefined
+  for (let page = 0; page < 50; page++) {
+    const upstream = new URL('bibles', BASE)
+    upstream.searchParams.append('language_ranges[]', '*')
+    upstream.searchParams.set('page_size', '99')
+    if (token) upstream.searchParams.set('page_token', token)
+    const res = await fetch(upstream, { headers: { 'X-YVP-App-Key': key, Accept: 'application/json' } })
+    if (!res.ok) return json({ error: `YouVersion responded ${res.status}` }, 502)
+    const body = (await res.json()) as { data: Bible[]; next_page_token?: string | null }
+    for (const b of body.data) {
+      bibles.push({
+        id: b.id,
+        abbreviation: b.abbreviation,
+        localized_abbreviation: b.localized_abbreviation,
+        title: b.title,
+        localized_title: b.localized_title,
+        language_tag: b.language_tag,
+        books: b.books?.length ?? 0,
+      })
+    }
+    token = body.next_page_token ?? undefined
+    if (!token) break
+  }
+  return new Response(JSON.stringify(bibles), {
+    headers: {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, s-maxage=21600, stale-while-revalidate=86400',
     },
   })
 }

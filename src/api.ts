@@ -1,5 +1,12 @@
-// Client for the Free Use Bible API (https://bible.helloao.org).
-// No API key needed, CORS is open, and responses are CDN cached.
+// Bible data from two sources:
+// - The Free Use Bible API (https://bible.helloao.org): no key, CORS open, CDN cached.
+//   Includes recorded narration with verse timings for some translations.
+// - YouVersion (see ./youversion), reached through a server-side proxy that holds the key.
+// Translations only YouVersion has get ids like "yv-111"; everything else uses Free Use
+// Bible API ids, including translations both sources carry.
+
+import { fetchYvBooks, fetchYvCatalog, fetchYvChapter, isYouVersionId } from './youversion/api'
+import { mergeCatalogs } from './youversion/merge'
 
 const BASE = 'https://bible.helloao.org'
 
@@ -8,13 +15,20 @@ export interface Translation {
   name: string
   englishName: string
   shortName: string
-  language: string // ISO 639-3, e.g. "eng", "swe"
+  /** ISO 639-3 ("swe") for the Free Use Bible API, BCP 47 ("sv") for YouVersion. */
+  language: string
   languageName?: string
   languageEnglishName?: string
   textDirection: 'ltr' | 'rtl'
   website: string
   licenseUrl: string
   numberOfBooks: number
+  /** Where the text comes from; absent means the Free Use Bible API. */
+  source?: 'youversion'
+  /** The matching YouVersion Bible, when YouVersion carries this translation too. */
+  youVersionId?: number
+  /** Copyright notice to show with the text (YouVersion). */
+  copyright?: string
 }
 
 export interface Book {
@@ -92,17 +106,30 @@ function getJson<T>(path: string): Promise<T> {
   return p
 }
 
-export async function fetchTranslations(): Promise<Translation[]> {
-  const d = await getJson<{ translations: Translation[] }>('/api/available_translations.json')
-  return d.translations
+let catalog: Promise<Translation[]> | undefined
+
+/**
+ * Translations from both sources, merged. If YouVersion is unavailable (no key, outage,
+ * or local development without the proxy) this is just the Free Use Bible API list.
+ */
+export function fetchTranslations(): Promise<Translation[]> {
+  if (!catalog) {
+    const free = getJson<{ translations: Translation[] }>('/api/available_translations.json').then((d) => d.translations)
+    const yv = fetchYvCatalog().catch(() => [])
+    catalog = Promise.all([free, yv]).then(([f, y]) => mergeCatalogs(f, y))
+    catalog.catch(() => (catalog = undefined))
+  }
+  return catalog
 }
 
 export async function fetchBooks(translationId: string): Promise<Book[]> {
+  if (isYouVersionId(translationId)) return fetchYvBooks(translationId)
   const d = await getJson<{ books: Book[] }>(`/api/${translationId}/books.json`)
   return d.books
 }
 
 export function fetchChapter(ref: ChapterRef): Promise<ChapterData> {
+  if (isYouVersionId(ref.translationId)) return fetchYvChapter(ref)
   return getJson<ChapterData>(`/api/${ref.translationId}/${ref.book}/${ref.chapter}.json`)
 }
 

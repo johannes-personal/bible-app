@@ -15,9 +15,12 @@ interface Props {
 
 const noteCaller = (i: number) => String.fromCharCode(97 + (i % 26)) // a, b, c…
 
-// Parts are separate strings in the source, so spaces go between them, except before closing punctuation.
-const CLOSING = /^[”’"'»),.;:!?\]]/
-const spaceBefore = (next: Part | undefined) => !(next?.kind === 'text' && CLOSING.test(next.text))
+// Parts are separate strings in the source, so spaces go between them, except around
+// punctuation that attaches to a word and where the text already has whitespace.
+const CLOSING = /^[\s”’"'»),.;:!?\]]/
+const OPENING = /[\s“‘«„([]$/
+const spaceAfter = (part: Part & { kind: 'text' }, next: Part | undefined) =>
+  !OPENING.test(part.text) && !(next?.kind === 'text' && CLOSING.test(next.text))
 
 export const Reader = memo(function Reader({
   title,
@@ -61,7 +64,7 @@ export const Reader = memo(function Reader({
           <span key={i} className={cls || undefined}>
             {p.text}
             {p.notes?.map(noteRef)}
-            {spaceBefore(parts[i + 1]) && ' '}
+            {spaceAfter(p, parts[i + 1]) && ' '}
           </span>
         )
       }
