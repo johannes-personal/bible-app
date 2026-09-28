@@ -1024,3 +1024,8 @@ button:disabled {
 .poetry br {
   display: none;
 }
+
+.attribution .copyright {
+  white-space: pre-line;
+  margin: 0 0 8px;
+}

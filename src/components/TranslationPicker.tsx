@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { fetchTranslations, type Translation } from '../api'
 import { useAsync } from '../hooks'
-import { preferredLanguages } from '../lang'
+import { languageKey, preferredLanguages } from '../lang'
 import { groupTranslations, partitionLanguages, recentTranslationIds, type LanguageGroup } from '../translations'
 import { Icon } from './Icon'
 import { Sheet } from './Sheet'
@@ -19,7 +19,8 @@ export function TranslationPicker({ currentId, onSelect, onClose }: Props) {
   const [chosenLanguage, setChosenLanguage] = useState<string | null | undefined>(undefined)
 
   const preferred = useMemo(() => preferredLanguages(), [])
-  const currentLanguage = data?.find((t) => t.id === currentId)?.language
+  const current = data?.find((t) => t.id === currentId)
+  const currentLanguage = current && languageKey(current.language)
   const language = chosenLanguage === undefined ? currentLanguage : chosenLanguage
 
   const allGroups = useMemo(() => (data ? groupTranslations(data, preferred) : []), [data, preferred])

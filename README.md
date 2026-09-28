@@ -15,9 +15,12 @@ A simple, login-free Bible reader with listen-along audio.
 
 Where you left off, and your settings, are remembered in the browser. Links such as `#/BSB/JHN/3` point to a chapter.
 
-## Data source
+## Data sources
 
-Text and audio come from the [Free Use Bible API](https://bible.helloao.org) by AO Lab: no API key, CORS enabled, CDN cached. It only carries openly licensed translations (BSB, WEB, KJV, ASV, NET, Folkbibeln, …), so copyrighted ones like NIV or ESV aren't included. Each chapter links to its translation's license.
+- **[Free Use Bible API](https://bible.helloao.org)** by AO Lab: openly licensed translations (BSB, WEB, KJV, NET, Folkbibeln, …) and recorded narration with verse timings for some of them. No key; called straight from the browser.
+- **[YouVersion Platform](https://developers.youversion.com)**: the Bibles available to our app key, including licensed ones like NIV. Called through `api/yv.ts`, a Vercel function that adds the key from the `YOUVERSION_APP_KEY` environment variable so it never reaches the browser. Non-commercial use only.
+
+The two catalogues are merged per language (`src/youversion/merge.ts`). A translation both carry is shown once with YouVersion's name and abbreviation, but read from the Free Use Bible API so its narration keeps working. YouVersion-only Bibles have ids like `yv-111`; their passage HTML is converted into the same chapter format as the Free Use Bible API (`src/youversion/html.ts`). Without the function or key (e.g. under `npm run dev`), the app only shows the Free Use Bible API.
 
 ## Development
 

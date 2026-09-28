@@ -25,23 +25,30 @@ const all = [
 
 describe('groupTranslations', () => {
   it('puts preferred languages first, then English and Swedish, then A–Z', () => {
-    expect(groupTranslations(all, ['de']).map((g) => g.language)).toEqual(['deu', 'eng', 'swe', 'afr'])
-    expect(groupTranslations(all, ['sv']).map((g) => g.language)).toEqual(['swe', 'eng', 'afr', 'deu'])
+    expect(groupTranslations(all, ['de']).map((g) => g.language)).toEqual(['de', 'en', 'sv', 'af'])
+    expect(groupTranslations(all, ['sv']).map((g) => g.language)).toEqual(['sv', 'en', 'af', 'de'])
   })
 
   it('filters by name or language', () => {
     expect(groupTranslations(all, [], 'folk').flatMap((g) => g.translations.map((x) => x.id))).toEqual(['swe_fol'])
-    expect(groupTranslations(all, [], 'german').map((g) => g.language)).toEqual(['deu'])
+    expect(groupTranslations(all, [], 'german').map((g) => g.language)).toEqual(['de'])
   })
 })
 
 describe('partitionLanguages', () => {
   it('suggests preferred languages and the current one, keeping their order', () => {
     const groups = groupTranslations(all, ['de'])
-    const { suggested, others } = partitionLanguages(groups, ['de'], 'afr')
-    expect(suggested.map((g) => g.language)).toEqual(['deu', 'eng', 'swe', 'afr'])
+    const { suggested, others } = partitionLanguages(groups, ['de'], 'af')
+    expect(suggested.map((g) => g.language)).toEqual(['de', 'en', 'sv', 'af'])
     expect(others).toEqual([])
-    expect(partitionLanguages(groups, ['de']).others.map((g) => g.language)).toEqual(['afr'])
+    expect(partitionLanguages(groups, ['de']).others.map((g) => g.language)).toEqual(['af'])
+  })
+
+  it('puts both sources\' codes for a language in one group', () => {
+    const merged = [...all, { ...all[2], id: 'yv-1111', language: 'sv' }]
+    const swedish = groupTranslations(merged, []).find((g) => g.language === 'sv')
+    expect(swedish?.translations.map((t) => t.id).sort()).toEqual(['swe_fol', 'yv-1111'])
+    expect(swedish?.label).toBe('Swedish · svenska')
   })
 })
 

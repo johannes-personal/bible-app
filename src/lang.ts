@@ -17,8 +17,53 @@ const ISO3_TO_BCP47: Record<string, string> = {
   vie: 'vi', xho: 'xh', yor: 'yo', yue: 'zh-HK', zho: 'zh', zsm: 'ms', zul: 'zu',
 }
 
-export function toBcp47(iso3: string): string | undefined {
-  return ISO3_TO_BCP47[iso3]
+/**
+ * BCP 47 tag for a language code from either source: the Free Use Bible API uses
+ * ISO 639-3 ("swe"), YouVersion uses BCP 47 ("sv", "zh-Hant"). Undefined if unknown.
+ */
+export function toBcp47(code: string): string | undefined {
+  if (ISO3_TO_BCP47[code]) return ISO3_TO_BCP47[code]
+  try {
+    // Canonicalization also maps ISO 639-3 aliases to their 2-letter form ("swe" -> "sv").
+    return Intl.getCanonicalLocales(code)[0]
+  } catch {
+    return undefined
+  }
+}
+
+/** Primary language subtag used to group translations from both sources, e.g. "sv". */
+export function languageKey(code: string): string {
+  return (toBcp47(code) ?? code).toLowerCase().split('-')[0]
+}
+
+const englishNames = safeDisplayNames('en')
+
+function safeDisplayNames(locale: string) {
+  try {
+    return new Intl.DisplayNames([locale], { type: 'language', fallback: 'none' })
+  } catch {
+    return undefined
+  }
+}
+
+const nameCache = new Map<string, { english?: string; native?: string }>()
+
+/** English and native names for a language key, e.g. { english: "Swedish", native: "svenska" }. */
+export function languageNames(key: string): { english?: string; native?: string } {
+  let names = nameCache.get(key)
+  if (!names) {
+    let english: string | undefined
+    let native: string | undefined
+    try {
+      english = englishNames?.of(key) || undefined
+      native = safeDisplayNames(key)?.of(key) || undefined
+    } catch {
+      // Not a valid language code; callers fall back to other names.
+    }
+    names = { english, native }
+    nameCache.set(key, names)
+  }
+  return names
 }
 
 /** Primary subtags of the browser's preferred languages, e.g. ["sv", "en"]. */
@@ -27,7 +72,7 @@ export function preferredLanguages(): string[] {
   return [...new Set(langs.filter(Boolean).map((l) => l.toLowerCase().split('-')[0]))]
 }
 
-/** Whether a translation's ISO 639-3 language matches a BCP 47 primary subtag. */
-export function matchesLanguage(iso3: string, primary: string): boolean {
-  return toBcp47(iso3)?.split('-')[0] === primary
+/** Whether a translation's language code matches a BCP 47 primary subtag. */
+export function matchesLanguage(code: string, primary: string): boolean {
+  return languageKey(code) === primary
 }

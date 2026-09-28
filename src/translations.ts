@@ -1,5 +1,5 @@
 import type { Translation } from './api'
-import { matchesLanguage } from './lang'
+import { languageKey, languageNames, matchesLanguage } from './lang'
 import { load, save } from './storage'
 
 const RECENT_KEY = 'bible:recentTranslations'
@@ -14,15 +14,18 @@ export function rememberTranslation(id: string) {
 }
 
 export interface LanguageGroup {
+  /** Language key shared by both sources, e.g. "sv" (see `languageKey`). */
   language: string
   label: string
   translations: Translation[]
 }
 
+/** "Swedish · svenska": the browser's names for the language, else the source's own names. */
 export function languageLabel(t: Translation): string {
-  const english = t.languageEnglishName || t.language
-  const native = t.languageName
-  return native && native !== english ? `${english} · ${native}` : english
+  const names = languageNames(languageKey(t.language))
+  const english = names.english || t.languageEnglishName || t.language
+  const native = names.native || t.languageName
+  return native && native.toLowerCase() !== english.toLowerCase() ? `${english} · ${native}` : english
 }
 
 /**
@@ -44,10 +47,11 @@ export function groupTranslations(
   const byLang = new Map<string, LanguageGroup>()
   for (const t of translations) {
     if (!matches(t)) continue
-    let g = byLang.get(t.language)
+    const key = languageKey(t.language)
+    let g = byLang.get(key)
     if (!g) {
-      g = { language: t.language, label: languageLabel(t), translations: [] }
-      byLang.set(t.language, g)
+      g = { language: key, label: languageLabel(t), translations: [] }
+      byLang.set(key, g)
     }
     g.translations.push(t)
   }
