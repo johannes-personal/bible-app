@@ -2,6 +2,8 @@
 
 A simple, login-free Bible reader with listen-along audio.
 
+**Live:** https://the-bible-reader.vercel.app
+
 - **1,200+ translations** in hundreds of languages, searchable and grouped by language (your browser's languages first, then English and Swedish).
 - **Book and chapter picker**, previous/next chapter buttons, and ←/→ keyboard shortcuts.
 - **Reading view** with section headings, poetry layout, footnotes, optional red letters, adjustable text size and light/sepia/dark themes.
@@ -28,6 +30,12 @@ npm run build      # static site in dist/
 ```
 
 The build is a fully static site with relative paths, so `dist/` can be hosted anywhere: Vercel, Netlify, GitHub Pages, or any static file server.
+
+## Deployment and releases
+
+- The site is hosted on Vercel, which deploys `main` to https://the-bible-reader.vercel.app on every push.
+- To cut a release, update `CHANGELOG.md` and the `version` in `package.json`, merge to `main`, then push a tag:
+  `git tag v1.1.0 && git push origin v1.1.0`. The Release workflow publishes a GitHub release with the built site attached.
 
 ## Project layout
 
