@@ -37,7 +37,9 @@ export function useSettings() {
     ...load<Partial<Settings>>(KEY, {}),
   }))
 
-  useEffect(() => save(KEY, settings), [settings])
+  useEffect(() => {
+    save(KEY, settings)
+  }, [settings])
 
   useEffect(() => {
     const root = document.documentElement

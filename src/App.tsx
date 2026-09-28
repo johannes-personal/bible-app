@@ -40,7 +40,9 @@ export default function App() {
   }, [data, loading, ref, title])
 
   // Start each chapter at the top.
-  useEffect(() => window.scrollTo(0, 0), [ref.translationId, ref.book, ref.chapter])
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [ref.translationId, ref.book, ref.chapter])
 
   const goNext = useCallback(() => next && navigate(next), [next])
   const goPrevious = useCallback(() => previous && navigate(previous), [previous])
