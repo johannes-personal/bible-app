@@ -119,7 +119,9 @@ export function usePlayer({ chapter, verses, title, settings, onEnded, onNext, o
     }
   }, [engineKey, chapterKey, play])
 
-  useEffect(() => engineRef.current?.setRate(settings.rate), [settings.rate])
+  useEffect(() => {
+    engineRef.current?.setRate(settings.rate)
+  }, [settings.rate])
 
   useEffect(
     () => () => {

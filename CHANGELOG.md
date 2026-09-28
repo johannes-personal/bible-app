@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Fix a blank screen after choosing another chapter or translation in browsers where `scrollTo()` returns a Promise (recent Chrome and Edge).
+
 ## 1.0.0
 
 First release. Live at https://the-bible-reader.vercel.app
