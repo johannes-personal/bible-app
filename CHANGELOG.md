@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+- Adds YouVersion (the source behind bible.com) as a second Bible source: about 950 more translations, including NIV, NASB, Amplified and nuBibeln, for over 2,200 in total.
+- Translations both sources carry appear once, with YouVersion's name and abbreviation (e.g. Svenska Kärnbibeln is now "SKB"), and keep their recorded narration where available.
+- YouVersion texts show their copyright notice and link to bible.com. They're read aloud with the device voice.
+
 ## 1.1.0
 
 - The book picker opens on the current book's chapters; "All books" goes back to the full list.
