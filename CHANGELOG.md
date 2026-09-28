@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.2
+
+- The page now leaves room for the audio options panel, so it no longer covers the chapter's Previous/Next buttons.
+- Quoted and poetic verses (e.g. Matthew 5:3) are highlighted in full while being read, not just their verse number, and their verse numbers sit beside the first line again.
+- The device voice no longer clips the last word of a sentence at higher speeds.
+- "Words of Jesus in red" in reading settings no longer splits into two columns.
+
 ## 1.0.1
 
 - Fix a blank screen after choosing another chapter or translation in browsers where `scrollTo()` returns a Promise (recent Chrome and Edge).
