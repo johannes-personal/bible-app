@@ -668,6 +668,18 @@ button:disabled {
   text-overflow: ellipsis;
 }
 
+.language-cell {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  white-space: normal;
+}
+
+.list-top {
+  padding-top: 8px;
+}
+
 .chapter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));

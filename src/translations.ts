@@ -52,13 +52,27 @@ export function groupTranslations(
     g.translations.push(t)
   }
 
-  const priority = [...preferred, 'en', 'sv']
-  const rank = (g: LanguageGroup) => {
-    const i = priority.findIndex((p) => matchesLanguage(g.language, p))
-    return i === -1 ? priority.length : i
-  }
-
+  const rank = languageRank(preferred)
   const groups = [...byLang.values()]
   for (const g of groups) g.translations.sort((a, b) => a.name.localeCompare(b.name))
-  return groups.sort((a, b) => rank(a) - rank(b) || a.label.localeCompare(b.label))
+  return groups.sort((a, b) => rank(a.language) - rank(b.language) || a.label.localeCompare(b.label))
+}
+
+/** Position of a language in the preferred order (browser languages, English, Swedish); Infinity if absent. */
+function languageRank(preferred: string[]) {
+  const priority = [...preferred, 'en', 'sv']
+  return (language: string) => {
+    const i = priority.findIndex((p) => matchesLanguage(language, p))
+    return i === -1 ? Infinity : i
+  }
+}
+
+/**
+ * Splits language groups into suggested ones (preferred languages plus the current
+ * translation's language) and all the others, keeping the order of `groups`.
+ */
+export function partitionLanguages(groups: LanguageGroup[], preferred: string[], current?: string) {
+  const rank = languageRank(preferred)
+  const isSuggested = (g: LanguageGroup) => g.language === current || rank(g.language) !== Infinity
+  return { suggested: groups.filter(isSuggested), others: groups.filter((g) => !isSuggested(g)) }
 }

@@ -15,7 +15,8 @@ export function PassagePicker({ current, onSelect, onClose }: Props) {
   const { translationId } = current
   const { data: books, error, loading, retry } = useAsync(translationId, () => fetchBooks(translationId))
   const [query, setQuery] = useState('')
-  const [bookId, setBookId] = useState<string | null>(null)
+  // Open on the current book's chapters; "All books" goes back to the full list.
+  const [bookId, setBookId] = useState<string | null>(current.book)
 
   const book = books?.find((b) => b.id === bookId) ?? null
   const groups = useMemo(() => {
