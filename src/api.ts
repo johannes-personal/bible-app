@@ -2,8 +2,9 @@
 // - The Free Use Bible API (https://bible.helloao.org): no key, CORS open, CDN cached.
 //   Includes recorded narration with verse timings for some translations.
 // - YouVersion (see ./youversion), reached through a server-side proxy that holds the key.
-// Translations only YouVersion has get ids like "yv-111"; everything else uses Free Use
-// Bible API ids, including translations both sources carry.
+// YouVersion takes precedence: its translations get ids like "yv-111", including those both
+// sources carry. For those, the Free Use Bible API adds recorded narration and stands in
+// when YouVersion can't be reached. Translations only it has keep its ids (e.g. "eng_kjv").
 
 import { fetchYvBooks, fetchYvCatalog, fetchYvChapter, isYouVersionId } from './youversion/api'
 import { mergeCatalogs } from './youversion/merge'
@@ -26,8 +27,10 @@ export interface Translation {
   numberOfBooks: number
   /** Where the text comes from; absent means the Free Use Bible API. */
   source?: 'youversion'
-  /** The matching YouVersion Bible, when YouVersion carries this translation too. */
+  /** The YouVersion Bible this text comes from. */
   youVersionId?: number
+  /** The same translation's Free Use Bible API id, when that source carries it too. */
+  freeId?: string
   /** Copyright notice to show with the text (YouVersion). */
   copyright?: string
 }
@@ -141,15 +144,55 @@ export function fetchTranslations(): Promise<Translation[]> {
   return catalog
 }
 
-export async function fetchBooks(translationId: string): Promise<Book[]> {
-  if (isYouVersionId(translationId)) return fetchYvBooks(translationId)
-  const d = await getJson<{ books: Book[] }>(`/api/${translationId}/books.json`)
-  return d.books
+/** The merged catalogue entry for a translation id; also finds YouVersion entries by their old Free Use Bible API id. */
+export function findTranslation(list: Translation[] | null | undefined, id: string): Translation | undefined {
+  return list?.find((t) => t.id === id) ?? list?.find((t) => t.freeId === id)
 }
 
-export function fetchChapter(ref: ChapterRef): Promise<ChapterData> {
-  if (isYouVersionId(ref.translationId)) return fetchYvChapter(ref)
-  return getJson<ChapterData>(`/api/${ref.translationId}/${ref.book}/${ref.chapter}.json`)
+/** The Free Use Bible API id of a YouVersion translation both sources carry. */
+const freeIdOf = (translationId: string) =>
+  fetchTranslations().then(
+    (list) => findTranslation(list, translationId)?.freeId,
+    () => undefined,
+  )
+
+const fetchFreeBooks = (id: string) => getJson<{ books: Book[] }>(`/api/${id}/books.json`).then((d) => d.books)
+const fetchFreeChapter = (id: string, ref: ChapterRef) => getJson<ChapterData>(`/api/${id}/${ref.book}/${ref.chapter}.json`)
+
+export async function fetchBooks(translationId: string): Promise<Book[]> {
+  if (!isYouVersionId(translationId)) return fetchFreeBooks(translationId)
+  try {
+    return await fetchYvBooks(translationId)
+  } catch (e) {
+    const freeId = await freeIdOf(translationId)
+    if (!freeId) throw e
+    return fetchFreeBooks(freeId)
+  }
+}
+
+export async function fetchChapter(ref: ChapterRef): Promise<ChapterData> {
+  if (!isYouVersionId(ref.translationId)) return fetchFreeChapter(ref.translationId, ref)
+  const [yv, free] = await Promise.all([
+    fetchYvChapter(ref).then(
+      (data) => ({ data, error: null }),
+      (error: Error) => ({ data: null, error }),
+    ),
+    freeIdOf(ref.translationId).then((id) => (id ? fetchFreeChapter(id, ref).catch(() => null) : null)),
+  ])
+  if (yv.data) {
+    // Recorded narration from the Free Use Bible API, when its verses line up with YouVersion's.
+    if (!free || free.numberOfVerses !== yv.data.numberOfVerses) return yv.data
+    return { ...yv.data, thisChapterAudioLinks: free.thisChapterAudioLinks, thisChapterAudioTimings: free.thisChapterAudioTimings }
+  }
+  if (!free) throw yv.error
+  // YouVersion is unavailable: read the same translation from the Free Use Bible API, under the YouVersion id.
+  const asYv = (r: ChapterRef | null) => r && { ...r, translationId: ref.translationId }
+  return {
+    ...free,
+    translation: { ...free.translation, id: ref.translationId },
+    nextChapterReference: asYv(free.nextChapterReference),
+    previousChapterReference: asYv(free.previousChapterReference),
+  }
 }
 
 /** Cross references for a chapter (OpenBible.info, via the Free Use Bible API). */

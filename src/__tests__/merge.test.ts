@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Translation } from '../api'
+import { findTranslation, type Translation } from '../api'
 import type { YvBible } from '../youversion/api'
 import { mergeCatalogs } from '../youversion/merge'
 
@@ -28,27 +28,37 @@ describe('mergeCatalogs', () => {
   const byId = new Map(merged.map((t) => [t.id, t]))
 
   it('pairs by abbreviation, title and known pairs within the same language', () => {
-    expect(byId.get('BSB')?.youVersionId).toBe(3034)
-    expect(byId.get('eng_ojb')?.youVersionId).toBe(130)
-    expect(byId.get('swe_svk')?.youVersionId).toBe(1111)
+    expect(byId.get('yv-3034')?.freeId).toBe('BSB')
+    expect(byId.get('yv-130')?.freeId).toBe('eng_ojb')
+    expect(byId.get('yv-1111')?.freeId).toBe('swe_svk')
     // Same abbreviation but a different language is not a match.
     expect(byId.get('deu_x')?.youVersionId).toBeUndefined()
   })
 
-  it("shows YouVersion's name and abbreviation for shared translations", () => {
-    expect(byId.get('swe_svk')).toMatchObject({ shortName: 'SKB', name: 'Svenska Kärnbibeln', language: 'swe' })
-    expect(byId.get('swe_fol')?.shortName).toBe('FOL')
+  it('gives shared translations the YouVersion id, name and abbreviation', () => {
+    expect(byId.get('yv-1111')).toMatchObject({ shortName: 'SKB', name: 'Svenska Kärnbibeln', source: 'youversion' })
+    expect(byId.has('BSB')).toBe(false)
+    expect(byId.has('swe_svk')).toBe(false)
   })
 
-  it('adds YouVersion-only Bibles with their own ids and keeps everything else', () => {
+  it('lists YouVersion first, then translations only the Free Use Bible API has', () => {
+    expect(merged.map((t) => t.id)).toEqual(['yv-3034', 'yv-130', 'yv-1111', 'yv-111', 'swe_fol', 'deu_x'])
     expect(byId.get('yv-111')).toMatchObject({ shortName: 'NIV', source: 'youversion', language: 'en' })
-    expect(merged).toHaveLength(freeList.length + 1)
+    expect(byId.get('yv-111')?.freeId).toBeUndefined()
+    expect(byId.get('swe_fol')).toMatchObject({ shortName: 'FOL' })
+  })
+
+  it('finds shared translations by their old Free Use Bible API id', () => {
+    expect(findTranslation(merged, 'BSB')?.id).toBe('yv-3034')
+    expect(findTranslation(merged, 'yv-3034')?.id).toBe('yv-3034')
+    expect(findTranslation(merged, 'swe_fol')?.id).toBe('swe_fol')
+    expect(findTranslation(merged, 'nope')).toBeUndefined()
   })
 
   it('does not pair when a rule matches more than one candidate', () => {
     const twoWebs = [free('a', 'WEB', 'World English Bible', 'eng'), free('b', 'WEB', 'World English Bible', 'eng')]
     const result = mergeCatalogs(twoWebs, [yv(1, 'WEB', 'World English Bible', 'en')])
-    expect(result.filter((t) => !t.source && t.youVersionId)).toHaveLength(0)
-    expect(result.map((t) => t.id)).toContain('yv-1')
+    expect(result.filter((t) => t.freeId)).toHaveLength(0)
+    expect(result.map((t) => t.id)).toEqual(['yv-1', 'a', 'b'])
   })
 })

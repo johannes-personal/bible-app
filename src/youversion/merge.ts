@@ -2,10 +2,11 @@ import type { Translation } from '../api'
 import { languageKey } from '../lang'
 import { yvTranslation, type YvBible } from './api'
 
-// Merges the Free Use Bible API and YouVersion catalogues into one list. A translation both
-// sources carry becomes a single entry: it keeps the Free Use Bible API id (so its text,
-// recorded narration and existing links still work) but shows YouVersion's name and
-// abbreviation, which match bible.com.
+// Merges the YouVersion and Free Use Bible API catalogues into one list. YouVersion comes
+// first: a translation both sources carry becomes a YouVersion entry (id "yv-…", name and
+// abbreviation as on bible.com) that remembers its Free Use Bible API id in `freeId`, for
+// recorded narration and as a fallback when YouVersion can't be reached. Translations only
+// the Free Use Bible API has are added after with their own ids.
 
 /** Pairs whose names and abbreviations differ between the sources. */
 const KNOWN_PAIRS: Record<string, number> = {
@@ -61,15 +62,21 @@ export function mergeCatalogs(free: Translation[], yv: YvBible[]): Translation[]
     }
   }
 
-  const merged = free.map((t): Translation => {
-    const y = pairs.get(t.id)
-    if (!y) return t
+  const freeById = new Map(free.map((t) => [t.id, t]))
+  const freeIdOf = new Map([...pairs].map(([freeId, y]) => [y.id, freeId]))
+  const fromYv = yv.map((y): Translation => {
+    const t = freeById.get(freeIdOf.get(y.id) ?? '')
+    const entry = yvTranslation(y)
+    if (!t) return entry
     return {
-      ...t,
-      name: y.localized_title || y.title || t.name,
-      shortName: y.localized_abbreviation || y.abbreviation || t.shortName,
-      youVersionId: y.id,
+      ...entry,
+      // The Free Use Bible API's language names and text direction are kept as labels.
+      languageName: t.languageName,
+      languageEnglishName: t.languageEnglishName,
+      textDirection: t.textDirection,
+      numberOfBooks: entry.numberOfBooks || t.numberOfBooks,
+      freeId: t.id,
     }
   })
-  return [...merged, ...yv.filter((y) => !paired.has(y.id)).map((y) => yvTranslation(y))]
+  return [...fromYv, ...free.filter((t) => !pairs.has(t.id))]
 }
