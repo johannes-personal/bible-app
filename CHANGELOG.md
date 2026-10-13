@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0
+
+- Related verses work both ways, whatever the translation: verses with strong cross references get a small ⇄ marker at the end. Hovering (or tapping) it shows up to five related verses in the current translation, each with a link to read it in context. For example, Matthew 12:7 shows Hosea 6:6, and Hosea 6:6 shows Matthew 9:13 and 12:7.
+- The cross references come from OpenBible.info (CC BY 4.0), credited at the bottom of the chapter. Only the most-voted links get a marker, so chapters don't fill up with them.
+- Markers can be turned off in the reading settings ("Related-verse markers").
+
 ## 1.3.0
 
 - Footnotes open in a popover (hover on desktop, tap on phones). When a note refers to other verses, such as "Deuteronomy 8:3" or "5 Mos 8:3", the popover shows their full text in the current translation, with a link to read them in context.

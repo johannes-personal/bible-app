@@ -1134,3 +1134,58 @@ button:disabled {
   background: var(--accent-soft);
   font-size: 14px;
 }
+
+/* ---------- Related-verse markers ---------- */
+
+.xref {
+  line-height: 0;
+}
+
+.xref button {
+  border: none;
+  background: none;
+  line-height: 1;
+  padding: 3px 3px;
+  margin: -3px 0 -3px 1px;
+  border-radius: 4px;
+  color: var(--accent);
+  opacity: 0.7;
+  cursor: pointer;
+  vertical-align: 0.15em;
+}
+
+.xref button:hover,
+.xref button[aria-expanded='true'] {
+  opacity: 1;
+  background: var(--accent-soft);
+}
+
+.xref svg {
+  width: 0.62em;
+  height: 0.62em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  display: block;
+}
+
+.popover-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.popover-title + .quote {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.attribution .credit {
+  margin: 6px 0 0;
+}

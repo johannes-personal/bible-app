@@ -80,6 +80,16 @@ export function SettingsPanel({ settings, update, onClose }: Props) {
             Words of Jesus in red <span className="muted">(where the translation marks them)</span>
           </span>
         </label>
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={settings.relatedVerses}
+            onChange={(e) => update({ relatedVerses: e.target.checked })}
+          />
+          <span>
+            Related-verse markers <span className="muted">(verses that are quoted or closely echoed elsewhere)</span>
+          </span>
+        </label>
       </div>
     </Sheet>
   )

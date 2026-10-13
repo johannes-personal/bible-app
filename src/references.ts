@@ -3,15 +3,20 @@ import type { Book } from './api'
 // Finds Bible references such as "Deuteronomy 8:3", "Psalms 91:11–12", "5 Mos 8:3",
 // "Ps 91:11f." or "Matt 5:3; 6:9" in footnote text.
 
-export interface Reference {
-  /** Position of the reference in the text. */
-  start: number
-  end: number
+/** A range of verses within one chapter. */
+export interface VerseRange {
   /** USFM book code, e.g. "DEU". */
   book: string
   chapter: number
   verseStart: number
   verseEnd: number
+}
+
+/** A reference found in text. */
+export interface Reference extends VerseRange {
+  /** Position of the reference in the text. */
+  start: number
+  end: number
 }
 
 // Common names and abbreviations per book, in English and Swedish. The current
@@ -155,7 +160,7 @@ export function referenceFinder(books: Book[] = []): ReferenceFinder {
 }
 
 /** "Psalms 91:11–12" style label, using the translation's book name when known. */
-export function referenceLabel(ref: Reference, books: Book[] = []): string {
+export function referenceLabel(ref: VerseRange, books: Book[] = []): string {
   const name = books.find((b) => b.id === ref.book)?.name ?? NAMES[ref.book]?.[0] ?? ref.book
   const verses = ref.verseEnd > ref.verseStart ? `${ref.verseStart}–${ref.verseEnd}` : `${ref.verseStart}`
   return `${name} ${ref.chapter}:${verses}`

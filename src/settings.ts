@@ -8,6 +8,8 @@ export interface Settings {
   fontSize: number // px
   redLetters: boolean
   showVerseNumbers: boolean
+  /** Mark verses with strong cross references (OpenBible.info). */
+  relatedVerses: boolean
   // Audio
   /** "tts" for the device voice, otherwise a narrator name such as "hays". */
   audioSource: string
@@ -24,6 +26,7 @@ const DEFAULTS: Settings = {
   fontSize: 19,
   redLetters: false,
   showVerseNumbers: true,
+  relatedVerses: true,
   audioSource: '',
   ttsVoiceURI: {},
   rate: 1,
