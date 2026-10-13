@@ -57,5 +57,7 @@ describe('route hash', () => {
     const ref = { translationId: 'eng_kjv', book: 'JHN', chapter: 3 }
     expect(parseHash(hashFor(ref))).toEqual(ref)
     expect(parseHash('#/nonsense')).toBeNull()
+    expect(parseHash('#/BSB/DEU/8/3')).toEqual({ translationId: 'BSB', book: 'DEU', chapter: 8, verse: 3 })
+    expect(hashFor({ translationId: 'BSB', book: 'DEU', chapter: 8, verse: 3 })).toBe('#/BSB/DEU/8/3')
   })
 })

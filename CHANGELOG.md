@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.3.0
+
+- Footnotes open in a popover (hover on desktop, tap on phones). When a note refers to other verses, such as "Deuteronomy 8:3" or "5 Mos 8:3", the popover shows their full text in the current translation, with a link to read them in context.
+- References in the notes at the end of a chapter are links too. Links point at a verse (e.g. `#/BSB/DEU/8/3`), which is scrolled to and briefly highlighted.
+- Footnote markers are easier to hover and tap, and Folkbibeln's markers get letters instead of "-".
+- Fixes verse numbers overlapping the first word when a poetic passage starts with a prose line, and the translation button being squeezed on narrow screens.
+
 ## 1.2.0
 
 - Adds YouVersion (the source behind bible.com) as a second Bible source: about 950 more translations, including NIV, NASB, Amplified and nuBibeln, for over 2,200 in total.

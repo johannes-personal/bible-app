@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { fetchBooks, fetchChapter, fetchTranslations, type ChapterRef, type Translation } from './api'
+import { fetchBooks, fetchChapter, fetchTranslations, type Book, type ChapterRef, type Translation } from './api'
 import { useAutoscroll } from './audio/useAutoscroll'
 import { usePlayer } from './audio/usePlayer'
 import { Icon } from './components/Icon'
@@ -11,12 +11,14 @@ import { TranslationPicker } from './components/TranslationPicker'
 import { parseChapter } from './content'
 import { useAsync } from './hooks'
 import { languageKey, languageNames, toBcp47 } from './lang'
-import { hashFor, LAST_KEY, navigate, useRoute } from './route'
+import { chapterOf, hashFor, LAST_KEY, navigate, useRoute } from './route'
 import { useSettings } from './settings'
 import { save } from './storage'
 import { rememberTranslation } from './translations'
 
 type Panel = 'passage' | 'translation' | 'settings' | null
+
+const NO_BOOKS: Book[] = []
 
 export default function App() {
   const ref = useRoute()
@@ -24,11 +26,15 @@ export default function App() {
   const [panel, setPanel] = useState<Panel>(null)
   const closePanel = useCallback(() => setPanel(null), [])
 
-  const { data, error, loading, retry } = useAsync(hashFor(ref), () => fetchChapter(ref))
+  // Keyed by chapter only, so following a reference within the chapter doesn't reload it.
+  const { data, error, loading, retry } = useAsync(hashFor(chapterOf(ref)), () => fetchChapter(chapterOf(ref)))
   const parsed = useMemo(() => (data ? parseChapter(data.chapter.content) : null), [data])
   const verseTexts = useMemo(() => parsed?.verses.map((v) => v.text) ?? [], [parsed])
 
   const title = data ? `${data.book.name} ${data.chapter.number}` : ''
+
+  // Book names of the current translation, for recognising references in footnotes.
+  const { data: books } = useAsync(ref.translationId, () => fetchBooks(ref.translationId))
 
   // The merged catalogue names shared translations the way YouVersion does (e.g. "SKB"),
   // so prefer its entry over the chapter's own metadata once it has loaded.
@@ -41,14 +47,27 @@ export default function App() {
 
   useEffect(() => {
     if (!data || loading) return
-    save(LAST_KEY, ref)
+    save(LAST_KEY, chapterOf(ref))
     document.title = `${title} · ${translation?.shortName || translation?.name}`
   }, [data, loading, ref, title, translation])
 
-  // Start each chapter at the top.
+  // Start each chapter at the top, or at the verse a link points to (briefly highlighted).
   useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [ref.translationId, ref.book, ref.chapter])
+    if (!ref.verse) {
+      window.scrollTo(0, 0)
+      return
+    }
+    if (loading || !data) return
+    const el = document.getElementById(`v${ref.verse}`)
+    if (!el) return
+    el.scrollIntoView({ block: 'center' })
+    el.classList.add('flash')
+    const timer = setTimeout(() => el.classList.remove('flash'), 2500)
+    return () => {
+      clearTimeout(timer)
+      el.classList.remove('flash')
+    }
+  }, [ref.translationId, ref.book, ref.chapter, ref.verse, loading, data])
 
   const goNext = useCallback(() => next && navigate(next), [next])
   const goPrevious = useCallback(() => previous && navigate(previous), [previous])
@@ -154,6 +173,9 @@ export default function App() {
               dir={data.translation.textDirection}
               lang={toBcp47(data.translation.language)}
               currentIndex={readingIndex}
+              translationId={data.translation.id}
+              bookId={data.book.id}
+              books={books ?? NO_BOOKS}
               onVerseClick={player.state.status === 'idle' ? undefined : onVerseClick}
             />
             <nav className="chapter-nav">

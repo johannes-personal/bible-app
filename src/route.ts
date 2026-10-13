@@ -3,19 +3,27 @@ import type { ChapterRef } from './api'
 import { load } from './storage'
 import { preferredLanguages } from './lang'
 
-// The current chapter lives in the URL hash (#/BSB/JHN/3) so links are shareable
-// and the browser's back button works.
+// The current chapter lives in the URL hash (#/BSB/JHN/3, or #/BSB/JHN/3/16 to point at a
+// verse) so links are shareable and the browser's back button works.
 
 export const LAST_KEY = 'bible:last'
 
 export function parseHash(hash: string): ChapterRef | null {
-  const m = /^#\/([^/]+)\/([^/]+)\/(\d+)$/.exec(hash)
+  const m = /^#\/([^/]+)\/([^/]+)\/(\d+)(?:\/(\d+))?$/.exec(hash)
   if (!m) return null
-  return { translationId: decodeURIComponent(m[1]), book: m[2].toUpperCase(), chapter: Number(m[3]) }
+  const ref: ChapterRef = { translationId: decodeURIComponent(m[1]), book: m[2].toUpperCase(), chapter: Number(m[3]) }
+  if (m[4]) ref.verse = Number(m[4])
+  return ref
 }
 
 export function hashFor(ref: ChapterRef): string {
-  return `#/${encodeURIComponent(ref.translationId)}/${ref.book}/${ref.chapter}`
+  const verse = ref.verse ? `/${ref.verse}` : ''
+  return `#/${encodeURIComponent(ref.translationId)}/${ref.book}/${ref.chapter}${verse}`
+}
+
+/** The chapter part of a reference, without any verse. */
+export function chapterOf({ translationId, book, chapter }: ChapterRef): ChapterRef {
+  return { translationId, book, chapter }
 }
 
 function defaultRef(): ChapterRef {

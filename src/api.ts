@@ -70,6 +70,8 @@ export interface ChapterRef {
   translationId: string
   book: string
   chapter: number
+  /** A verse to scroll to, e.g. when following a reference. */
+  verse?: number
 }
 
 export interface ChapterData {
