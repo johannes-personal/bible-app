@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { fetchTranslations, type Translation } from '../api'
+import { fetchTranslations, youVersionUnavailable, type Translation } from '../api'
 import { useAsync } from '../hooks'
 import { languageKey, preferredLanguages } from '../lang'
 import { groupTranslations, partitionLanguages, recentTranslationIds, type LanguageGroup } from '../translations'
@@ -78,6 +78,12 @@ export function TranslationPicker({ currentId, onSelect, onClose }: Props) {
           Couldn't load translations. <button className="link" onClick={retry}>Try again</button>
         </p>
       )}
+      {data && !loading && youVersionUnavailable() && (
+        <p className="notice">
+          YouVersion translations (such as NIV) couldn't be loaded.{' '}
+          <button className="link" onClick={retry}>Try again</button>
+        </p>
+      )}
     </>
   )
 
@@ -94,6 +100,7 @@ export function TranslationPicker({ currentId, onSelect, onClose }: Props) {
           </button>
         }
       >
+        {status}
         <ul className="list list-top">{group.translations.map(row)}</ul>
       </Sheet>
     )

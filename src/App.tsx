@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { fetchBooks, fetchChapter, fetchTranslations, type ChapterRef, type Translation } from './api'
+import { fetchBooks, fetchChapter, fetchTranslations, type Book, type ChapterRef, type Translation } from './api'
 import { useAutoscroll } from './audio/useAutoscroll'
 import { usePlayer } from './audio/usePlayer'
 import { Icon } from './components/Icon'
@@ -11,12 +11,15 @@ import { TranslationPicker } from './components/TranslationPicker'
 import { parseChapter } from './content'
 import { useAsync } from './hooks'
 import { languageKey, languageNames, toBcp47 } from './lang'
-import { hashFor, LAST_KEY, navigate, useRoute } from './route'
+import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, useRoute } from './route'
+import { isYouVersionId } from './youversion/api'
 import { useSettings } from './settings'
 import { save } from './storage'
 import { rememberTranslation } from './translations'
 
 type Panel = 'passage' | 'translation' | 'settings' | null
+
+const NO_BOOKS: Book[] = []
 
 export default function App() {
   const ref = useRoute()
@@ -24,11 +27,15 @@ export default function App() {
   const [panel, setPanel] = useState<Panel>(null)
   const closePanel = useCallback(() => setPanel(null), [])
 
-  const { data, error, loading, retry } = useAsync(hashFor(ref), () => fetchChapter(ref))
+  // Keyed by chapter only, so following a reference within the chapter doesn't reload it.
+  const { data, error, loading, retry } = useAsync(hashFor(chapterOf(ref)), () => fetchChapter(chapterOf(ref)))
   const parsed = useMemo(() => (data ? parseChapter(data.chapter.content) : null), [data])
   const verseTexts = useMemo(() => parsed?.verses.map((v) => v.text) ?? [], [parsed])
 
   const title = data ? `${data.book.name} ${data.chapter.number}` : ''
+
+  // Book names of the current translation, for recognising references in footnotes.
+  const { data: books } = useAsync(ref.translationId, () => fetchBooks(ref.translationId))
 
   // The merged catalogue names shared translations the way YouVersion does (e.g. "SKB"),
   // so prefer its entry over the chapter's own metadata once it has loaded.
@@ -39,16 +46,66 @@ export default function App() {
   const next = (!loading && data?.nextChapterReference) || null
   const previous = (!loading && data?.previousChapterReference) || null
 
+  // Save the chapter (and any verse it was opened at) once it has loaded. Only on load:
+  // after that, scrolling keeps the saved verse up to date (below).
   useEffect(() => {
     if (!data || loading) return
-    save(LAST_KEY, ref)
-    document.title = `${title} · ${translation?.shortName || translation?.name}`
-  }, [data, loading, ref, title, translation])
+    save(LAST_KEY, ref.verse ? { ...chapterOf(ref), verse: ref.verse } : chapterOf(ref))
+    // `ref` is the route that loaded `data`.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, loading])
 
-  // Start each chapter at the top.
   useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [ref.translationId, ref.book, ref.chapter])
+    if (data && !loading) document.title = `${title} · ${translation?.shortName || translation?.name}`
+  }, [data, loading, title, translation])
+
+  // Remember the reading position as the chapter plus the first verse at the top of the screen.
+  useEffect(() => {
+    if (!data || loading) return
+    const chapter = chapterOf(ref)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const saveTopVerse = () => {
+      const top = document.querySelector('.app-header')?.getBoundingClientRect().bottom ?? 0
+      const verses = document.querySelectorAll<HTMLElement>('.reader .verse')
+      const first = [...verses].find((v) => v.getBoundingClientRect().bottom > top + 8)
+      const verse = Number(first?.dataset.verse)
+      save(LAST_KEY, verse > 1 ? { ...chapter, verse } : chapter)
+    }
+    const onScroll = () => {
+      clearTimeout(timer)
+      timer = setTimeout(saveTopVerse, 250)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('scroll', onScroll)
+    }
+    // Re-bind per chapter; `ref` changes identity on every navigation.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, loading, ref.translationId, ref.book, ref.chapter])
+
+  // Start each chapter at the top, or at the verse a link points to (briefly highlighted).
+  useEffect(() => {
+    if (!ref.verse) {
+      window.scrollTo(0, 0)
+      return
+    }
+    if (loading || !data) return
+    const el = document.getElementById(`v${ref.verse}`)
+    if (!el) return
+    if (ref.resume) {
+      // Back to where reading stopped: that verse at the top, under the header.
+      el.scrollIntoView({ block: 'start' })
+      return
+    }
+    el.scrollIntoView({ block: 'center' })
+    el.classList.add('flash')
+    const timer = setTimeout(() => el.classList.remove('flash'), 2500)
+    return () => {
+      clearTimeout(timer)
+      el.classList.remove('flash')
+    }
+  }, [ref.translationId, ref.book, ref.chapter, ref.verse, ref.resume, loading, data])
 
   const goNext = useCallback(() => next && navigate(next), [next])
   const goPrevious = useCallback(() => previous && navigate(previous), [previous])
@@ -142,6 +199,14 @@ export default function App() {
             <p className="muted">{error.message}</p>
             <div className="message-actions">
               <button className="button" onClick={retry}>Try again</button>
+              {isYouVersionId(ref.translationId) && (
+                <button
+                  className="button secondary"
+                  onClick={() => navigate({ ...chapterOf(ref), translationId: FALLBACK_TRANSLATION })}
+                >
+                  Read in {FALLBACK_TRANSLATION} instead
+                </button>
+              )}
               <button className="button secondary" onClick={() => setPanel('passage')}>Choose another chapter</button>
             </div>
           </div>
@@ -154,6 +219,9 @@ export default function App() {
               dir={data.translation.textDirection}
               lang={toBcp47(data.translation.language)}
               currentIndex={readingIndex}
+              translationId={data.translation.id}
+              bookId={data.book.id}
+              books={books ?? NO_BOOKS}
               onVerseClick={player.state.status === 'idle' ? undefined : onVerseClick}
             />
             <nav className="chapter-nav">

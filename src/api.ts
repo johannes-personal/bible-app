@@ -70,6 +70,10 @@ export interface ChapterRef {
   translationId: string
   book: string
   chapter: number
+  /** A verse to scroll to, e.g. when following a reference. */
+  verse?: number
+  /** The verse is a saved reading position to resume at, rather than a link target. */
+  resume?: boolean
 }
 
 export interface ChapterData {
@@ -107,17 +111,31 @@ function getJson<T>(path: string): Promise<T> {
 }
 
 let catalog: Promise<Translation[]> | undefined
+let youVersionMissing = false
+
+/** Whether the last catalogue load had to leave out YouVersion (outage, no key, local dev). */
+export const youVersionUnavailable = () => youVersionMissing
 
 /**
- * Translations from both sources, merged. If YouVersion is unavailable (no key, outage,
- * or local development without the proxy) this is just the Free Use Bible API list.
+ * Translations from both sources, merged. If YouVersion can't be reached this is just the
+ * Free Use Bible API list, and isn't remembered: the next call tries YouVersion again.
  */
 export function fetchTranslations(): Promise<Translation[]> {
   if (!catalog) {
     const free = getJson<{ translations: Translation[] }>('/api/available_translations.json').then((d) => d.translations)
-    const yv = fetchYvCatalog().catch(() => [])
-    catalog = Promise.all([free, yv]).then(([f, y]) => mergeCatalogs(f, y))
-    catalog.catch(() => (catalog = undefined))
+    const yv = fetchYvCatalog().then(
+      (list) => ({ list, ok: true }),
+      () => ({ list: [], ok: false }),
+    )
+    const merged = Promise.all([free, yv]).then(([f, y]) => {
+      youVersionMissing = !y.ok
+      if (!y.ok && catalog === merged) catalog = undefined
+      return mergeCatalogs(f, y.list)
+    })
+    merged.catch(() => {
+      if (catalog === merged) catalog = undefined
+    })
+    catalog = merged
   }
   return catalog
 }

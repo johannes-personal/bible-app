@@ -1,6 +1,8 @@
-import { memo, type ReactNode } from 'react'
-import type { Footnote } from '../api'
+import { memo, useMemo, type ReactNode } from 'react'
+import type { Book, Footnote } from '../api'
 import type { Block, Part, VerseBlock } from '../content'
+import { referenceFinder } from '../references'
+import { NoteRef, NoteText } from './NotePopover'
 
 interface Props {
   title: string
@@ -11,6 +13,10 @@ interface Props {
   /** Verse being read aloud, or -1. */
   currentIndex: number
   onVerseClick?: (index: number) => void
+  /** Used to resolve and show references in footnotes. */
+  translationId: string
+  bookId: string
+  books: Book[]
 }
 
 const noteCaller = (i: number) => String.fromCharCode(97 + (i % 26)) // a, b, c…
@@ -30,27 +36,30 @@ export const Reader = memo(function Reader({
   lang,
   currentIndex,
   onVerseClick,
+  translationId,
+  bookId,
+  books,
 }: Props) {
-  const callers = new Map(footnotes.map((f, i) => [f.noteId, f.caller && f.caller !== '+' ? f.caller : noteCaller(i)]))
+  const finder = useMemo(() => referenceFinder(books), [books])
+  // USFM callers "+" (generate one) and "-" (none) both get a letter here, so every note is clickable.
+  const callers = new Map(
+    footnotes.map((f, i) => [f.noteId, f.caller && f.caller !== '+' && f.caller !== '-' ? f.caller : noteCaller(i)]),
+  )
   const notes = new Map(footnotes.map((f) => [f.noteId, f]))
 
   const noteRef = (noteId: number) => {
     const note = notes.get(noteId)
     if (!note) return null
     return (
-      <sup key={`n${noteId}`} className="note-ref">
-        <button
-          type="button"
-          title={note.text}
-          aria-label={`Footnote ${callers.get(noteId)}`}
-          onClick={(e) => {
-            e.stopPropagation()
-            document.getElementById(`fn-${noteId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          }}
-        >
-          {callers.get(noteId)}
-        </button>
-      </sup>
+      <NoteRef
+        key={`n${noteId}`}
+        note={note}
+        caller={callers.get(noteId) ?? ''}
+        translationId={translationId}
+        bookId={bookId}
+        books={books}
+        finder={finder}
+      />
     )
   }
 
@@ -86,6 +95,7 @@ export const Reader = memo(function Reader({
       key={v.index}
       className={`verse${v.index === currentIndex ? ' current' : ''}${onVerseClick ? ' clickable' : ''}`}
       data-index={v.index}
+      data-verse={v.number}
       id={`v${v.number}`}
       onClick={onVerseClick ? () => onVerseClick(v.index) : undefined}
     >
@@ -127,7 +137,7 @@ export const Reader = memo(function Reader({
               <li key={f.noteId} id={`fn-${f.noteId}`}>
                 <span className="note-caller">{callers.get(f.noteId)}</span>
                 {f.reference && <span className="note-ref-label">{f.reference.chapter}:{f.reference.verse}</span>}
-                {f.text}
+                <NoteText text={f.text} translationId={translationId} bookId={bookId} finder={finder} />
               </li>
             ))}
           </ol>

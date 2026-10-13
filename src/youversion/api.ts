@@ -49,7 +49,9 @@ function get<T>(query: string): Promise<T> {
   let p = cache.get(query) as Promise<T> | undefined
   if (!p) {
     p = fetch(`/api/yv?${query}`).then((r) => {
-      if (!r.ok) throw new Error(`YouVersion request failed (${r.status})`)
+      // Without the proxy (e.g. local development) the request falls through to index.html.
+      const json = r.headers.get('Content-Type')?.includes('json')
+      if (!r.ok || !json) throw new Error("YouVersion can't be reached right now.")
       return r.json() as Promise<T>
     })
     p.catch(() => cache.delete(query))
