@@ -1,11 +1,24 @@
-// Bible data from two sources:
+// Bible data from three sources:
 // - The Free Use Bible API (https://bible.helloao.org): no key, CORS open, CDN cached.
 //   Includes recorded narration with verse timings for some translations.
 // - YouVersion (see ./youversion), reached through a server-side proxy that holds the key.
+// - Bible Brain (see ./biblebrain), also through a proxy: recorded narration, and a few
+//   translations of its own that come with it.
 // YouVersion takes precedence: its translations get ids like "yv-111", including those both
 // sources carry. For those, the Free Use Bible API adds recorded narration and stands in
 // when YouVersion can't be reached. Translations only it has keep its ids (e.g. "eng_kjv").
+// Bible Brain's own translations get ids like "bb-NLDHSV".
 
+import {
+  BB_TIMINGS,
+  fetchBbAudio,
+  fetchBbBooks,
+  fetchBbCatalog,
+  fetchBbChapter,
+  fetchBbTimings,
+  isBibleBrainId,
+} from './biblebrain/api'
+import { addBibleBrain } from './biblebrain/merge'
 import { fetchYvBooks, fetchYvCatalog, fetchYvChapter, isYouVersionId } from './youversion/api'
 import { mergeCatalogs } from './youversion/merge'
 import { toChapterCrossRefs, type ChapterCrossRefs, type CrossRef } from './crossrefs'
@@ -26,11 +39,13 @@ export interface Translation {
   licenseUrl: string
   numberOfBooks: number
   /** Where the text comes from; absent means the Free Use Bible API. */
-  source?: 'youversion'
+  source?: 'youversion' | 'biblebrain'
   /** The YouVersion Bible this text comes from. */
   youVersionId?: number
   /** The same translation's Free Use Bible API id, when that source carries it too. */
   freeId?: string
+  /** The Bible Brain Bible with recorded narration of this translation (or its text, for "bb-" ids). */
+  bibleBrainId?: string
   /** Copyright notice to show with the text (YouVersion). */
   copyright?: string
 }
@@ -121,8 +136,9 @@ let youVersionMissing = false
 export const youVersionUnavailable = () => youVersionMissing
 
 /**
- * Translations from both sources, merged. If YouVersion can't be reached this is just the
+ * Translations from all sources, merged. If YouVersion can't be reached this is just the
  * Free Use Bible API list, and isn't remembered: the next call tries YouVersion again.
+ * Bible Brain is optional: without it there's just no extra narration.
  */
 export function fetchTranslations(): Promise<Translation[]> {
   if (!catalog) {
@@ -131,10 +147,11 @@ export function fetchTranslations(): Promise<Translation[]> {
       (list) => ({ list, ok: true }),
       () => ({ list: [], ok: false }),
     )
-    const merged = Promise.all([free, yv]).then(([f, y]) => {
+    const bb = fetchBbCatalog().catch(() => [])
+    const merged = Promise.all([free, yv, bb]).then(([f, y, b]) => {
       youVersionMissing = !y.ok
       if (!y.ok && catalog === merged) catalog = undefined
-      return mergeCatalogs(f, y.list)
+      return addBibleBrain(mergeCatalogs(f, y.list), b)
     })
     merged.catch(() => {
       if (catalog === merged) catalog = undefined
@@ -149,17 +166,19 @@ export function findTranslation(list: Translation[] | null | undefined, id: stri
   return list?.find((t) => t.id === id) ?? list?.find((t) => t.freeId === id)
 }
 
-/** The Free Use Bible API id of a YouVersion translation both sources carry. */
-const freeIdOf = (translationId: string) =>
+/** The catalogue entry for a translation id, or undefined if the catalogue can't be loaded. */
+const entryOf = (translationId: string) =>
   fetchTranslations().then(
-    (list) => findTranslation(list, translationId)?.freeId,
+    (list) => findTranslation(list, translationId),
     () => undefined,
   )
+const freeIdOf = (translationId: string) => entryOf(translationId).then((t) => t?.freeId)
 
 const fetchFreeBooks = (id: string) => getJson<{ books: Book[] }>(`/api/${id}/books.json`).then((d) => d.books)
 const fetchFreeChapter = (id: string, ref: ChapterRef) => getJson<ChapterData>(`/api/${id}/${ref.book}/${ref.chapter}.json`)
 
 export async function fetchBooks(translationId: string): Promise<Book[]> {
+  if (isBibleBrainId(translationId)) return fetchBbBooks(translationId)
   if (!isYouVersionId(translationId)) return fetchFreeBooks(translationId)
   try {
     return await fetchYvBooks(translationId)
@@ -170,7 +189,21 @@ export async function fetchBooks(translationId: string): Promise<Book[]> {
   }
 }
 
+/** A chapter with every narration available for it: the text source's own, plus Bible Brain's. */
 export async function fetchChapter(ref: ChapterRef): Promise<ChapterData> {
+  if (isBibleBrainId(ref.translationId)) return fetchBbChapter(ref)
+  const [data, entry] = await Promise.all([fetchChapterText(ref), entryOf(ref.translationId)])
+  const bibleId = entry?.bibleBrainId
+  const audio = bibleId ? await fetchBbAudio(bibleId, ref.book, ref.chapter).catch(() => null) : null
+  if (!audio) return data
+  return {
+    ...data,
+    thisChapterAudioLinks: { ...data.thisChapterAudioLinks, ...audio.links },
+    thisChapterAudioTimings: { ...data.thisChapterAudioTimings, ...audio.timings },
+  }
+}
+
+async function fetchChapterText(ref: ChapterRef): Promise<ChapterData> {
   if (!isYouVersionId(ref.translationId)) return fetchFreeChapter(ref.translationId, ref)
   const [yv, free] = await Promise.all([
     fetchYvChapter(ref).then(
@@ -204,5 +237,6 @@ export async function fetchCrossRefs(book: string, chapter: number): Promise<Cha
 }
 
 export function fetchAudioTimings(path: string): Promise<AudioTimings> {
+  if (path.startsWith(BB_TIMINGS)) return fetchBbTimings(path)
   return getJson<AudioTimings>(path)
 }

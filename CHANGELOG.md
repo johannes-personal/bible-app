@@ -5,6 +5,7 @@
 - YouVersion now takes precedence: the about 530 translations both sources carry (such as BSB, ASV and Svenska Kärnbibeln) are read from YouVersion and get YouVersion ids in the URL, e.g. `#/yv-3034/JHN/3` for the BSB. Translations only the Free Use Bible API has keep their ids.
 - Those translations keep the Free Use Bible API's recorded narration (when its verses line up with YouVersion's), and fall back to its text if YouVersion can't be reached.
 - Older links and saved reading positions with the previous ids (e.g. `#/BSB/JHN/3`) switch to the new ones automatically.
+- Prepares Bible Brain (Faith Comes By Hearing) as a third source, through a new `/api/bb` function that holds the key (`BIBLE_BRAIN_KEY`). Once a valid key is set, its recorded narration is offered for the translations it matches (such as KJV and Svenska Folkbibeln), and Bibles it carries with both text and narration are added (such as the Herziene Statenvertaling). Without a valid key nothing changes.
 
 ## 1.4.0
 
