@@ -7,6 +7,7 @@
 
 import { fetchYvBooks, fetchYvCatalog, fetchYvChapter, isYouVersionId } from './youversion/api'
 import { mergeCatalogs } from './youversion/merge'
+import { toChapterCrossRefs, type ChapterCrossRefs, type CrossRef } from './crossrefs'
 
 const BASE = 'https://bible.helloao.org'
 
@@ -149,6 +150,14 @@ export async function fetchBooks(translationId: string): Promise<Book[]> {
 export function fetchChapter(ref: ChapterRef): Promise<ChapterData> {
   if (isYouVersionId(ref.translationId)) return fetchYvChapter(ref)
   return getJson<ChapterData>(`/api/${ref.translationId}/${ref.book}/${ref.chapter}.json`)
+}
+
+/** Cross references for a chapter (OpenBible.info, via the Free Use Bible API). */
+export async function fetchCrossRefs(book: string, chapter: number): Promise<ChapterCrossRefs> {
+  const d = await getJson<{ chapter: { content: { verse: number; references: CrossRef[] }[] } }>(
+    `/api/d/open-cross-ref/${book}/${chapter}.json`,
+  )
+  return toChapterCrossRefs(book, chapter, d.chapter.content)
 }
 
 export function fetchAudioTimings(path: string): Promise<AudioTimings> {

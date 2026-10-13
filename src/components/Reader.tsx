@@ -1,8 +1,9 @@
 import { memo, useMemo, type ReactNode } from 'react'
 import type { Book, Footnote } from '../api'
 import type { Block, Part, VerseBlock } from '../content'
-import { referenceFinder } from '../references'
+import { referenceFinder, type VerseRange } from '../references'
 import { NoteRef, NoteText } from './NotePopover'
+import { RelatedRef } from './RelatedRef'
 
 interface Props {
   title: string
@@ -17,6 +18,8 @@ interface Props {
   translationId: string
   bookId: string
   books: Book[]
+  /** Strong cross references per verse number; verses listed here get a marker. */
+  related: Map<number, VerseRange[]>
 }
 
 const noteCaller = (i: number) => String.fromCharCode(97 + (i % 26)) // a, b, c…
@@ -39,6 +42,7 @@ export const Reader = memo(function Reader({
   translationId,
   bookId,
   books,
+  related,
 }: Props) {
   const finder = useMemo(() => referenceFinder(books), [books])
   // USFM callers "+" (generate one) and "-" (none) both get a letter here, so every note is clickable.
@@ -63,7 +67,8 @@ export const Reader = memo(function Reader({
     )
   }
 
-  const renderPart = (p: Part, i: number, parts: Part[]): ReactNode => {
+  /** `trailing` goes inside the part, so in poetry it stays on the verse's last line. */
+  const renderPart = (p: Part, i: number, parts: Part[], trailing?: ReactNode): ReactNode => {
     switch (p.kind) {
       case 'text': {
         const cls = [p.poem ? `line poem-${Math.min(p.poem, 3)}` : '', p.jesus ? 'jesus' : '']
@@ -73,6 +78,7 @@ export const Reader = memo(function Reader({
           <span key={i} className={cls || undefined}>
             {p.text}
             {p.notes?.map(noteRef)}
+            {trailing}
             {spaceAfter(p, parts[i + 1]) && ' '}
           </span>
         )
@@ -90,19 +96,27 @@ export const Reader = memo(function Reader({
     }
   }
 
-  const renderVerse = (v: VerseBlock) => (
-    <span
-      key={v.index}
-      className={`verse${v.index === currentIndex ? ' current' : ''}${onVerseClick ? ' clickable' : ''}`}
-      data-index={v.index}
-      data-verse={v.number}
-      id={`v${v.number}`}
-      onClick={onVerseClick ? () => onVerseClick(v.index) : undefined}
-    >
-      <sup className="vnum">{v.number}</sup>
-      {v.parts.map(renderPart)}
-    </span>
-  )
+  const renderVerse = (v: VerseBlock) => {
+    const refs = related.get(v.number)
+    const marker = refs && (
+      <RelatedRef verse={v.number} related={refs} translationId={translationId} books={books} />
+    )
+    const lastText = v.parts.findLastIndex((p) => p.kind === 'text')
+    return (
+      <span
+        key={v.index}
+        className={`verse${v.index === currentIndex ? ' current' : ''}${onVerseClick ? ' clickable' : ''}`}
+        data-index={v.index}
+        data-verse={v.number}
+        id={`v${v.number}`}
+        onClick={onVerseClick ? () => onVerseClick(v.index) : undefined}
+      >
+        <sup className="vnum">{v.number}</sup>
+        {v.parts.map((p, i, parts) => renderPart(p, i, parts, i === lastText ? marker : undefined))}
+        {lastText < 0 && marker}
+      </span>
+    )
+  }
 
   return (
     <article className="reader" dir={dir} lang={lang}>

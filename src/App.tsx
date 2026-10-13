@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { fetchBooks, fetchChapter, fetchTranslations, type Book, type ChapterRef, type Translation } from './api'
+import { fetchBooks, fetchChapter, fetchCrossRefs, fetchTranslations, type Book, type ChapterRef, type Translation } from './api'
+import { relatedVerses } from './crossrefs'
+import type { VerseRange } from './references'
 import { useAutoscroll } from './audio/useAutoscroll'
 import { usePlayer } from './audio/usePlayer'
 import { Icon } from './components/Icon'
@@ -20,6 +22,7 @@ import { rememberTranslation } from './translations'
 type Panel = 'passage' | 'translation' | 'settings' | null
 
 const NO_BOOKS: Book[] = []
+const NO_RELATED = new Map<number, VerseRange[]>()
 
 export default function App() {
   const ref = useRoute()
@@ -33,6 +36,23 @@ export default function App() {
   const verseTexts = useMemo(() => parsed?.verses.map((v) => v.text) ?? [], [parsed])
 
   const title = data ? `${data.book.name} ${data.chapter.number}` : ''
+
+  // Cross references for the chapter; useAsync keeps the previous chapter's while loading,
+  // so only use them once they match the chapter on screen.
+  const { data: crossRefs } = useAsync(
+    settings.relatedVerses ? `xref/${ref.book}/${ref.chapter}` : null,
+    () => fetchCrossRefs(ref.book, ref.chapter),
+  )
+  const related = useMemo(() => {
+    if (!settings.relatedVerses || !crossRefs || !data) return NO_RELATED
+    if (crossRefs.book !== data.book.id || crossRefs.chapter !== data.chapter.number) return NO_RELATED
+    const map = new Map<number, VerseRange[]>()
+    for (const [verse, refs] of crossRefs.byVerse) {
+      const list = relatedVerses(refs)
+      if (list.length) map.set(verse, list)
+    }
+    return map
+  }, [settings.relatedVerses, crossRefs, data])
 
   // Book names of the current translation, for recognising references in footnotes.
   const { data: books } = useAsync(ref.translationId, () => fetchBooks(ref.translationId))
@@ -221,6 +241,7 @@ export default function App() {
               currentIndex={readingIndex}
               translationId={data.translation.id}
               bookId={data.book.id}
+              related={related}
               books={books ?? NO_BOOKS}
               onVerseClick={player.state.status === 'idle' ? undefined : onVerseClick}
             />
@@ -249,6 +270,15 @@ export default function App() {
                   {' · '}Text from the{' '}
                   <a href="https://bible.helloao.org" target="_blank" rel="noreferrer">Free Use Bible API</a>
                 </>
+              )}
+              {related.size > 0 && (
+                <p className="credit">
+                  Related verses from{' '}
+                  <a href="https://www.openbible.info/labs/cross-references/" target="_blank" rel="noreferrer">
+                    OpenBible.info
+                  </a>{' '}
+                  (CC BY 4.0)
+                </p>
               )}
             </footer>
           </>
