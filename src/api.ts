@@ -72,6 +72,8 @@ export interface ChapterRef {
   chapter: number
   /** A verse to scroll to, e.g. when following a reference. */
   verse?: number
+  /** The verse is a saved reading position to resume at, rather than a link target. */
+  resume?: boolean
 }
 
 export interface ChapterData {

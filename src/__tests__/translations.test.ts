@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Translation } from '../api'
 import { groupTranslations, partitionLanguages } from '../translations'
-import { parseHash, hashFor } from '../route'
+import { hashFor, initialRoute, parseHash } from '../route'
 
 const t = (id: string, language: string, languageEnglishName: string, name = id): Translation => ({
   id,
@@ -49,6 +49,22 @@ describe('partitionLanguages', () => {
     const swedish = groupTranslations(merged, []).find((g) => g.language === 'sv')
     expect(swedish?.translations.map((t) => t.id).sort()).toEqual(['swe_fol', 'yv-1111'])
     expect(swedish?.label).toBe('Swedish · svenska')
+  })
+})
+
+describe('initialRoute', () => {
+  const last = { translationId: 'BSB', book: 'JHN', chapter: 3, verse: 16 }
+  it('resumes the saved chapter and verse when the URL has no chapter', () => {
+    expect(initialRoute('', last)).toEqual({ ...last, resume: true })
+    expect(initialRoute('', { translationId: 'BSB', book: 'JHN', chapter: 3 })).toEqual({ translationId: 'BSB', book: 'JHN', chapter: 3 })
+  })
+  it('starts a first visit at John 1 in the NIV', () => {
+    expect(initialRoute('', null)).toEqual({ translationId: 'yv-111', book: 'JHN', chapter: 1 })
+  })
+  it('resumes the saved verse when reloading the same chapter, but not for other chapters or verse links', () => {
+    expect(initialRoute('#/BSB/JHN/3', last)).toEqual({ ...last, resume: true })
+    expect(initialRoute('#/BSB/JHN/4', last)).toEqual({ translationId: 'BSB', book: 'JHN', chapter: 4 })
+    expect(initialRoute('#/BSB/JHN/3/1', last)).toEqual({ translationId: 'BSB', book: 'JHN', chapter: 3, verse: 1 })
   })
 })
 

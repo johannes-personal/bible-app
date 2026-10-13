@@ -95,6 +95,7 @@ export const Reader = memo(function Reader({
       key={v.index}
       className={`verse${v.index === currentIndex ? ' current' : ''}${onVerseClick ? ' clickable' : ''}`}
       data-index={v.index}
+      data-verse={v.number}
       id={`v${v.number}`}
       onClick={onVerseClick ? () => onVerseClick(v.index) : undefined}
     >

@@ -6,6 +6,7 @@
 - References in the notes at the end of a chapter are links too. Links point at a verse (e.g. `#/BSB/DEU/8/3`), which is scrolled to and briefly highlighted.
 - Footnote markers are easier to hover and tap, and Folkbibeln's markers get letters instead of "-".
 - Fixes verse numbers overlapping the first word when a poetic passage starts with a prose line, and the translation button being squeezed on narrow screens.
+- The app remembers where you were reading, down to the verse at the top of the screen, and opens there again (also after a reload).
 - First visits open in the NIV (previously BSB, or Folkbibeln for Swedish browsers). If YouVersion can't be reached, the error page offers the same chapter in BSB.
 - More reliable YouVersion loading: the server retries temporary YouVersion errors, and the app tries again instead of silently keeping a list without YouVersion's translations. The translation picker says when they couldn't be loaded and has a "Try again" button.
 

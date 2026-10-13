@@ -30,8 +30,21 @@ export const DEFAULT_TRANSLATION = 'yv-111'
 /** Used instead when YouVersion is unavailable. */
 export const FALLBACK_TRANSLATION = 'BSB'
 
-function defaultRef(): ChapterRef {
-  return load<ChapterRef | null>(LAST_KEY, null) ?? { translationId: DEFAULT_TRANSLATION, book: 'JHN', chapter: 1 }
+const sameChapter = (a: ChapterRef, b: ChapterRef) =>
+  a.translationId === b.translationId && a.book === b.book && a.chapter === b.chapter
+
+/**
+ * Where the app opens. Without a chapter in the URL it resumes the last reading position
+ * (chapter and the verse that was at the top of the screen), or starts a first visit at
+ * John 1 in the NIV. Reloading the saved chapter also resumes at the saved verse.
+ */
+export function initialRoute(hash: string, last: ChapterRef | null): ChapterRef {
+  const fromHash = parseHash(hash)
+  const resumeAt = (ref: ChapterRef) =>
+    last?.verse ? { ...chapterOf(ref), verse: last.verse, resume: true } : chapterOf(ref)
+  if (!fromHash) return last ? resumeAt(last) : { translationId: DEFAULT_TRANSLATION, book: 'JHN', chapter: 1 }
+  if (!fromHash.verse && last && sameChapter(fromHash, last)) return resumeAt(fromHash)
+  return fromHash
 }
 
 export function navigate(ref: ChapterRef, replace = false) {
@@ -45,10 +58,11 @@ export function navigate(ref: ChapterRef, replace = false) {
 }
 
 export function useRoute(): ChapterRef {
-  const [ref, setRef] = useState<ChapterRef>(() => parseHash(location.hash) ?? defaultRef())
+  const [ref, setRef] = useState<ChapterRef>(() => initialRoute(location.hash, load<ChapterRef | null>(LAST_KEY, null)))
 
   useEffect(() => {
-    if (!parseHash(location.hash)) history.replaceState(null, '', hashFor(ref))
+    // The URL shows the chapter; a resumed reading position stays out of it.
+    if (!parseHash(location.hash)) history.replaceState(null, '', hashFor(ref.resume ? chapterOf(ref) : ref))
     const onChange = () => {
       const next = parseHash(location.hash)
       if (next) setRef(next)

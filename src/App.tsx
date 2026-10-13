@@ -46,11 +46,43 @@ export default function App() {
   const next = (!loading && data?.nextChapterReference) || null
   const previous = (!loading && data?.previousChapterReference) || null
 
+  // Save the chapter (and any verse it was opened at) once it has loaded. Only on load:
+  // after that, scrolling keeps the saved verse up to date (below).
   useEffect(() => {
     if (!data || loading) return
-    save(LAST_KEY, chapterOf(ref))
-    document.title = `${title} · ${translation?.shortName || translation?.name}`
-  }, [data, loading, ref, title, translation])
+    save(LAST_KEY, ref.verse ? { ...chapterOf(ref), verse: ref.verse } : chapterOf(ref))
+    // `ref` is the route that loaded `data`.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, loading])
+
+  useEffect(() => {
+    if (data && !loading) document.title = `${title} · ${translation?.shortName || translation?.name}`
+  }, [data, loading, title, translation])
+
+  // Remember the reading position as the chapter plus the first verse at the top of the screen.
+  useEffect(() => {
+    if (!data || loading) return
+    const chapter = chapterOf(ref)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const saveTopVerse = () => {
+      const top = document.querySelector('.app-header')?.getBoundingClientRect().bottom ?? 0
+      const verses = document.querySelectorAll<HTMLElement>('.reader .verse')
+      const first = [...verses].find((v) => v.getBoundingClientRect().bottom > top + 8)
+      const verse = Number(first?.dataset.verse)
+      save(LAST_KEY, verse > 1 ? { ...chapter, verse } : chapter)
+    }
+    const onScroll = () => {
+      clearTimeout(timer)
+      timer = setTimeout(saveTopVerse, 250)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      clearTimeout(timer)
+      window.removeEventListener('scroll', onScroll)
+    }
+    // Re-bind per chapter; `ref` changes identity on every navigation.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, loading, ref.translationId, ref.book, ref.chapter])
 
   // Start each chapter at the top, or at the verse a link points to (briefly highlighted).
   useEffect(() => {
@@ -61,6 +93,11 @@ export default function App() {
     if (loading || !data) return
     const el = document.getElementById(`v${ref.verse}`)
     if (!el) return
+    if (ref.resume) {
+      // Back to where reading stopped: that verse at the top, under the header.
+      el.scrollIntoView({ block: 'start' })
+      return
+    }
     el.scrollIntoView({ block: 'center' })
     el.classList.add('flash')
     const timer = setTimeout(() => el.classList.remove('flash'), 2500)
@@ -68,7 +105,7 @@ export default function App() {
       clearTimeout(timer)
       el.classList.remove('flash')
     }
-  }, [ref.translationId, ref.book, ref.chapter, ref.verse, loading, data])
+  }, [ref.translationId, ref.book, ref.chapter, ref.verse, ref.resume, loading, data])
 
   const goNext = useCallback(() => next && navigate(next), [next])
   const goPrevious = useCallback(() => previous && navigate(previous), [previous])
