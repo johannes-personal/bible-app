@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ChapterRef } from './api'
 import { load } from './storage'
-import { preferredLanguages } from './lang'
 
 // The current chapter lives in the URL hash (#/BSB/JHN/3, or #/BSB/JHN/3/16 to point at a
 // verse) so links are shareable and the browser's back button works.
@@ -26,11 +25,13 @@ export function chapterOf({ translationId, book, chapter }: ChapterRef): Chapter
   return { translationId, book, chapter }
 }
 
+/** Where a first visit starts: John 1 in the NIV (from YouVersion). */
+export const DEFAULT_TRANSLATION = 'yv-111'
+/** Used instead when YouVersion is unavailable. */
+export const FALLBACK_TRANSLATION = 'BSB'
+
 function defaultRef(): ChapterRef {
-  const last = load<ChapterRef | null>(LAST_KEY, null)
-  if (last) return last
-  const translationId = preferredLanguages()[0] === 'sv' ? 'swe_fol' : 'BSB'
-  return { translationId, book: 'JHN', chapter: 1 }
+  return load<ChapterRef | null>(LAST_KEY, null) ?? { translationId: DEFAULT_TRANSLATION, book: 'JHN', chapter: 1 }
 }
 
 export function navigate(ref: ChapterRef, replace = false) {

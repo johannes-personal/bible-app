@@ -11,7 +11,8 @@ import { TranslationPicker } from './components/TranslationPicker'
 import { parseChapter } from './content'
 import { useAsync } from './hooks'
 import { languageKey, languageNames, toBcp47 } from './lang'
-import { chapterOf, hashFor, LAST_KEY, navigate, useRoute } from './route'
+import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, useRoute } from './route'
+import { isYouVersionId } from './youversion/api'
 import { useSettings } from './settings'
 import { save } from './storage'
 import { rememberTranslation } from './translations'
@@ -161,6 +162,14 @@ export default function App() {
             <p className="muted">{error.message}</p>
             <div className="message-actions">
               <button className="button" onClick={retry}>Try again</button>
+              {isYouVersionId(ref.translationId) && (
+                <button
+                  className="button secondary"
+                  onClick={() => navigate({ ...chapterOf(ref), translationId: FALLBACK_TRANSLATION })}
+                >
+                  Read in {FALLBACK_TRANSLATION} instead
+                </button>
+              )}
               <button className="button secondary" onClick={() => setPanel('passage')}>Choose another chapter</button>
             </div>
           </div>

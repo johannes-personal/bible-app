@@ -4,6 +4,24 @@
 
 const BASE = 'https://api.youversion.com/v1/'
 
+/**
+ * Fetches from YouVersion, retrying twice on rate limiting (429), server errors and network
+ * failures. The catalogue makes 15 requests in a row, so one hiccup shouldn't sink it.
+ */
+async function upstreamFetch(url: URL, key: string): Promise<Response> {
+  const delays = [300, 900]
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { 'X-YVP-App-Key': key, Accept: 'application/json' } })
+      const transient = res.status === 429 || res.status >= 500
+      if (!transient || attempt >= delays.length) return res
+    } catch (e) {
+      if (attempt >= delays.length) throw e
+    }
+    await new Promise((r) => setTimeout(r, delays[attempt]))
+  }
+}
+
 // bibles, bibles/{id}, bibles/{id}/index, bibles/{id}/books, bibles/{id}/passages/{ref}
 const ALLOWED = /^bibles(\/\d+(\/(index|books|passages\/[A-Za-z0-9.+-]+))?)?$/
 
@@ -21,7 +39,7 @@ export async function GET(request: Request): Promise<Response> {
     if (name !== 'path') upstream.searchParams.append(name, value)
   })
 
-  const res = await fetch(upstream, { headers: { 'X-YVP-App-Key': key, Accept: 'application/json' } })
+  const res = await upstreamFetch(upstream, key)
   return new Response(res.body, {
     status: res.status,
     headers: {
@@ -57,7 +75,7 @@ async function catalog(key: string): Promise<Response> {
     upstream.searchParams.append('language_ranges[]', '*')
     upstream.searchParams.set('page_size', '99')
     if (token) upstream.searchParams.set('page_token', token)
-    const res = await fetch(upstream, { headers: { 'X-YVP-App-Key': key, Accept: 'application/json' } })
+    const res = await upstreamFetch(upstream, key)
     if (!res.ok) return json({ error: `YouVersion responded ${res.status}` }, 502)
     const body = (await res.json()) as { data: Bible[]; next_page_token?: string | null }
     for (const b of body.data) {
