@@ -3,6 +3,9 @@
   "functions": {
     "api/yv.ts": {
       "maxDuration": 30
+    },
+    "api/bb.ts": {
+      "maxDuration": 30
     }
   }
 }

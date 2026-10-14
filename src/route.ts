@@ -57,6 +57,14 @@ export function navigate(ref: ChapterRef, replace = false) {
   }
 }
 
+let replacement: ChapterRef | null = null
+
+/** Swaps the current route for `ref` without a history entry; a resumed position stays one. */
+export function replaceRoute(ref: ChapterRef) {
+  replacement = ref
+  navigate(ref.resume ? chapterOf(ref) : ref, true)
+}
+
 export function useRoute(): ChapterRef {
   const [ref, setRef] = useState<ChapterRef>(() => initialRoute(location.hash, load<ChapterRef | null>(LAST_KEY, null)))
 
@@ -65,7 +73,9 @@ export function useRoute(): ChapterRef {
     if (!parseHash(location.hash)) history.replaceState(null, '', hashFor(ref.resume ? chapterOf(ref) : ref))
     const onChange = () => {
       const next = parseHash(location.hash)
-      if (next) setRef(next)
+      const replaced = replacement
+      replacement = null
+      if (next) setRef(replaced ?? next)
     }
     window.addEventListener('hashchange', onChange)
     return () => window.removeEventListener('hashchange', onChange)

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { fetchBooks, fetchChapter, fetchCrossRefs, fetchTranslations, type Book, type ChapterRef, type Translation } from './api'
+import { fetchBooks, fetchChapter, fetchCrossRefs, fetchTranslations, findTranslation, type Book, type ChapterRef, type Translation } from './api'
 import { relatedVerses } from './crossrefs'
 import type { VerseRange } from './references'
 import { useAutoscroll } from './audio/useAutoscroll'
@@ -13,7 +13,8 @@ import { TranslationPicker } from './components/TranslationPicker'
 import { parseChapter } from './content'
 import { useAsync } from './hooks'
 import { languageKey, languageNames, toBcp47 } from './lang'
-import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, useRoute } from './route'
+import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, replaceRoute, useRoute } from './route'
+import { BB_NARRATOR } from './biblebrain/api'
 import { isYouVersionId } from './youversion/api'
 import { useSettings } from './settings'
 import { save } from './storage'
@@ -60,8 +61,15 @@ export default function App() {
   // The merged catalogue names shared translations the way YouVersion does (e.g. "SKB"),
   // so prefer its entry over the chapter's own metadata once it has loaded.
   const { data: catalog } = useAsync('catalog', fetchTranslations)
-  const catalogById = useMemo(() => new Map(catalog?.map((t) => [t.id, t])), [catalog])
-  const translation = data && (catalogById.get(data.translation.id) ?? data.translation)
+  const translation = data && (findTranslation(catalog, data.translation.id) ?? data.translation)
+  const hasBibleBrainAudio = !!data && Object.keys(data.thisChapterAudioLinks ?? {}).some((n) => n.startsWith(BB_NARRATOR))
+
+  // Older links and saved positions use the Free Use Bible API id (e.g. "BSB") for translations
+  // that now come from YouVersion; switch those to the YouVersion id once the catalogue knows it.
+  useEffect(() => {
+    const t = findTranslation(catalog, ref.translationId)
+    if (t && t.id !== ref.translationId) replaceRoute({ ...ref, translationId: t.id })
+  }, [catalog, ref])
   // While the next chapter loads, `data` still holds the previous one, so its links would be stale.
   const next = (!loading && data?.nextChapterReference) || null
   const previous = (!loading && data?.previousChapterReference) || null
@@ -254,12 +262,14 @@ export default function App() {
               </button>
             </nav>
             <footer className="attribution">
-              {data.translation.source === 'youversion' ? (
+              {data.translation.source === 'youversion' || data.translation.source === 'biblebrain' ? (
                 <>
                   {data.translation.copyright && <p className="copyright">{data.translation.copyright}</p>}
-                  {data.translation.name}
+                  {translation?.name ?? data.translation.name}
                   {' · '}Text from{' '}
-                  <a href={data.translation.website} target="_blank" rel="noreferrer">YouVersion</a>
+                  <a href={data.translation.website} target="_blank" rel="noreferrer">
+                    {data.translation.source === 'youversion' ? 'YouVersion' : 'Bible Brain (Faith Comes By Hearing)'}
+                  </a>
                 </>
               ) : (
                 <>
@@ -270,6 +280,14 @@ export default function App() {
                   {' · '}Text from the{' '}
                   <a href="https://bible.helloao.org" target="_blank" rel="noreferrer">Free Use Bible API</a>
                 </>
+              )}
+              {hasBibleBrainAudio && data.translation.source !== 'biblebrain' && (
+                <p className="credit">
+                  Recorded narration from{' '}
+                  <a href={`https://live.bible.is/bible/${translation?.bibleBrainId ?? ''}`} target="_blank" rel="noreferrer">
+                    Faith Comes By Hearing
+                  </a>
+                </p>
               )}
               {related.size > 0 && (
                 <p className="credit">

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { fetchTranslations, youVersionUnavailable, type Translation } from '../api'
+import { fetchTranslations, findTranslation, youVersionUnavailable, type Translation } from '../api'
 import { useAsync } from '../hooks'
 import { languageKey, preferredLanguages } from '../lang'
 import { groupTranslations, partitionLanguages, recentTranslationIds, type LanguageGroup } from '../translations'
@@ -19,7 +19,7 @@ export function TranslationPicker({ currentId, onSelect, onClose }: Props) {
   const [chosenLanguage, setChosenLanguage] = useState<string | null | undefined>(undefined)
 
   const preferred = useMemo(() => preferredLanguages(), [])
-  const current = data?.find((t) => t.id === currentId)
+  const current = findTranslation(data, currentId)
   const currentLanguage = current && languageKey(current.language)
   const language = chosenLanguage === undefined ? currentLanguage : chosenLanguage
 
@@ -34,7 +34,8 @@ export function TranslationPicker({ currentId, onSelect, onClose }: Props) {
   )
   const recent = useMemo(() => {
     if (!data) return []
-    return recentTranslationIds().map((id) => data.find((t) => t.id === id)).filter((t): t is Translation => !!t)
+    const recent = recentTranslationIds().map((id) => findTranslation(data, id))
+    return [...new Set(recent)].filter((t): t is Translation => !!t)
   }, [data])
 
   const row = (t: Translation) => (
