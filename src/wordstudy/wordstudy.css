@@ -1,0 +1,602 @@
+/* Word study pages. Chart colours: the categorical palette validated for these surfaces
+   (light #ffffff, dark #1d1e21), in fixed order; single-series marks use the accent. */
+
+.ws {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-other: #b9b5ad;
+  --grid: #ebe8e1;
+}
+
+:root[data-theme='dark'] .ws {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-other: #5d5b56;
+  --grid: #2c2d31;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .ws {
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-other: #5d5b56;
+    --grid: #2c2d31;
+  }
+}
+
+.ws-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 8px 16px 48px;
+}
+
+.ws-credit {
+  margin-top: 40px;
+}
+
+/* Search */
+
+.ws-search {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.ws-search:focus-within {
+  border-color: var(--muted);
+}
+
+.ws-search > .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+  flex: none;
+}
+
+.ws-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px; /* no zoom on iOS */
+  outline: none;
+}
+
+.ws-suggestions {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+}
+
+.ws-suggestions a {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.ws-suggestions a > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-suggestions a > span:last-child {
+  flex: none;
+  font-size: 13px;
+}
+
+.ws-suggestions a.active,
+.ws-suggestions a:hover {
+  background: var(--surface-2);
+}
+
+/* Home */
+
+.ws-home h1,
+.ws-title h1 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 2em;
+  line-height: 1.2;
+  margin: 24px 0 8px;
+}
+
+.ws-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.ws-examples .pill {
+  padding: 0 16px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* Title */
+
+.ws-kicker {
+  margin: 24px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ws-title h1 {
+  margin-top: 4px;
+}
+
+.ws-lemma {
+  font-family: var(--serif);
+}
+
+.ws-lemma.big {
+  font-size: 1.1em;
+  margin-right: 0.2em;
+}
+
+.ws-gloss {
+  margin: 0;
+  font-size: 18px;
+}
+
+.ws-definition {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+/* Stats: one hero number, then supporting figures. */
+
+.ws-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 32px;
+  margin: 24px 0 8px;
+}
+
+.ws-stats div {
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.ws-stats dt {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.ws-stats dd {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.ws-stats .hero dd {
+  font-size: 48px;
+}
+
+/* Sections */
+
+.ws-section-card {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.ws-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.ws-section-head h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.ws-section-head p {
+  margin: 2px 0 0;
+  font-size: 14px;
+}
+
+.ws-note {
+  font-size: 14px;
+}
+
+.ws-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.ws-toggle button {
+  height: 30px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ws-toggle button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.ws-view-toggle {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+/* Bars: thin, rounded at the data end, square at the baseline, value at the tip. */
+
+.ws-bars,
+.ws-ranked {
+  display: flex;
+  flex-direction: column;
+}
+
+.ws-section {
+  display: flex;
+  justify-content: space-between;
+  margin: 14px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ws-section-total {
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-bar-group:first-child .ws-section {
+  margin-top: 0;
+}
+
+.ws-bar-row,
+.ws-ranked-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 30%) 1fr;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 26px;
+  padding: 1px 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  text-decoration: none;
+}
+
+.ws-ranked {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-ranked-row {
+  grid-template-columns: minmax(120px, 42%) 1fr;
+  min-height: 32px;
+}
+
+a.ws-ranked-row:hover .ws-ranked-label,
+.ws-bar-row:hover .ws-bar-label {
+  text-decoration: underline;
+}
+
+.ws-bar-label,
+.ws-ranked-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-bar-track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ws-bar {
+  display: flex;
+  gap: 2px; /* surface gap between stacked segments */
+  height: 12px;
+  min-width: 3px;
+  max-width: calc(100% - 52px);
+}
+
+.ws-seg {
+  min-width: 2px;
+  background: var(--accent);
+}
+
+.ws-seg:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.ws-bar-value {
+  flex: none;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.ws-bar-row:hover .ws-bar,
+.ws-ranked-row:hover .ws-bar {
+  filter: brightness(1.08);
+}
+
+.ws-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.ws-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ws-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.ws-table-wrap {
+  overflow-x: auto;
+}
+
+.ws-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-table th,
+.ws-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--grid);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ws-table th:first-child,
+.ws-table td:first-child {
+  text-align: left;
+}
+
+/* Tooltip: value first, then the label. */
+
+.ws-tooltip {
+  position: fixed;
+  z-index: 30;
+  transform: translate(-50%, calc(-100% - 8px));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 13px;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.ws-tip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ws-tip-key {
+  width: 10px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+/* Bible map: one row per book, one cell per chapter. */
+
+.ws-map {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ws-map-row {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.ws-map-row.new-section {
+  margin-top: 6px;
+}
+
+.ws-map-row:first-child {
+  margin-top: 0;
+}
+
+.ws-map-label {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
+.ws-map-cells {
+  display: flex;
+  gap: 1px;
+  height: 9px;
+}
+
+.ws-cell {
+  flex: 1;
+  min-width: 1px;
+  background: var(--surface-2);
+}
+
+.ws-cell.on {
+  background: var(--accent);
+  cursor: pointer;
+}
+
+.ws-map-scale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0 44px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ws-map-ramp {
+  width: 96px;
+  height: 8px;
+  border-radius: 2px;
+  background: linear-gradient(to right, color-mix(in srgb, var(--accent) 35%, transparent), var(--accent));
+}
+
+/* Occurrences */
+
+.ws-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.ws-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  min-width: 0;
+}
+
+.ws-filters select {
+  max-width: 240px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+}
+
+.ws-filter-count {
+  font-size: 14px;
+  padding-bottom: 8px;
+}
+
+.ws-occurrences {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ws-occurrences li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--grid);
+}
+
+.ws-occ-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ws-occ-head a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.ws-occ-head a:hover {
+  text-decoration: underline;
+}
+
+.ws-verse {
+  margin: 4px 0 0;
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.55;
+}
+
+.ws-verse mark {
+  background: var(--accent-soft);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 2px;
+}
+
+.ws-more {
+  margin-top: 16px;
+}
+
+.ws-loading {
+  margin-top: 32px;
+}

@@ -138,6 +138,18 @@ export default function App() {
   const goNext = useCallback(() => next && navigate(next), [next])
   const goPrevious = useCallback(() => previous && navigate(previous), [previous])
 
+  // Previous/Next, shown above and below the chapter.
+  const chapterNav = (position: 'top' | 'bottom') => (
+    <nav className={`chapter-nav ${position}`} aria-label={position === 'top' ? 'Chapter navigation' : undefined}>
+      <button className="button secondary" onClick={goPrevious} disabled={!previous}>
+        <Icon name="chevronLeft" /> Previous
+      </button>
+      <button className="button secondary" onClick={goNext} disabled={!next}>
+        Next <Icon name="chevronRight" />
+      </button>
+    </nav>
+  )
+
   const player = usePlayer({
     chapter: loading ? null : data,
     verses: verseTexts,
@@ -214,6 +226,9 @@ export default function App() {
             <Icon name="chevronDown" />
           </button>
           <span className="spacer" />
+          <a className="icon-button" href="#/study" aria-label="Word study" title="Word study">
+            <Icon name="search" />
+          </a>
           <button className="icon-button" onClick={() => setPanel('settings')} aria-label="Reading settings">
             <span className="aa" aria-hidden="true">Aa</span>
           </button>
@@ -240,6 +255,7 @@ export default function App() {
           </div>
         ) : data && parsed ? (
           <>
+            {chapterNav('top')}
             <Reader
               title={title}
               blocks={parsed.blocks}
@@ -253,14 +269,7 @@ export default function App() {
               books={books ?? NO_BOOKS}
               onVerseClick={player.state.status === 'idle' ? undefined : onVerseClick}
             />
-            <nav className="chapter-nav">
-              <button className="button secondary" onClick={goPrevious} disabled={!previous}>
-                <Icon name="chevronLeft" /> Previous
-              </button>
-              <button className="button secondary" onClick={goNext} disabled={!next}>
-                Next <Icon name="chevronRight" />
-              </button>
-            </nav>
+            {chapterNav('bottom')}
             <footer className="attribution">
               {data.translation.source === 'youversion' || data.translation.source === 'biblebrain' ? (
                 <>

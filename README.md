@@ -23,6 +23,14 @@ Where you left off, and your settings, are remembered in the browser. Links such
 
 The catalogues are merged per language (`src/youversion/merge.ts`, `src/biblebrain/merge.ts`). YouVersion comes first: a translation both it and the Free Use Bible API carry gets a YouVersion id (like `yv-3034` for the BSB) and is read from YouVersion, while the Free Use Bible API adds its recorded narration and stands in when YouVersion can't be reached. Translations only the Free Use Bible API has keep its ids (like `eng_kjv`). A Bible Brain recording of a translation the app already has is offered as an extra narrator; Bible Brain Bibles with text and narration that match nothing are added with ids like `bb-NLDHSV`. YouVersion passage HTML and Bible Brain verses are converted into the Free Use Bible API's chapter format. Without the functions or keys (e.g. under `npm run dev`), the app only shows the Free Use Bible API.
 
+## Word study
+
+The word study pages (`#/study`) use an index built from the [Berean Standard Bible interlinear](https://bereanbible.com) (public domain, via the Free Use Bible API), where every Hebrew, Aramaic and Greek word carries its Strong's number and the BSB English for it, and from the [STEPBible](https://github.com/STEPBible/STEPBible-Data) brief lexicons (CC BY 4.0). `node scripts/build-word-study.mjs` downloads both (cached in `.cache/word-study`) and writes `public/word-study/`, which is committed:
+
+- `names.json`: every Hebrew and Greek word with its lemma, transliteration, gloss and count;
+- `s/*.json`: per 100 Strong's numbers, each word's definition, English renderings, occurrences and the words most often found in the same verses (by log-likelihood);
+- `e/*.json`: per first letter, each English word with its forms and the Strong's numbers it translates.
+
 ## Development
 
 ```sh

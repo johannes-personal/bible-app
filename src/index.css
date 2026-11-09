@@ -400,6 +400,17 @@ button:disabled {
   margin: 40px 0 24px;
 }
 
+/* The top one is smaller, so it doesn't push the chapter down. */
+.chapter-nav.top {
+  margin: 16px 0 0;
+}
+
+.chapter-nav.top .button {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
 .attribution {
   font-size: 13px;
   color: var(--muted);

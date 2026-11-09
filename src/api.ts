@@ -177,6 +177,10 @@ const freeIdOf = (translationId: string) => entryOf(translationId).then((t) => t
 const fetchFreeBooks = (id: string) => getJson<{ books: Book[] }>(`/api/${id}/books.json`).then((d) => d.books)
 const fetchFreeChapter = (id: string, ref: ChapterRef) => getJson<ChapterData>(`/api/${id}/${ref.book}/${ref.chapter}.json`)
 
+/** A chapter straight from the Free Use Bible API, without other sources' narration (for word study). */
+export const fetchFreeChapterOnly = (translationId: string, book: string, chapter: number) =>
+  fetchFreeChapter(translationId, { translationId, book, chapter })
+
 export async function fetchBooks(translationId: string): Promise<Book[]> {
   if (isBibleBrainId(translationId)) return fetchBbBooks(translationId)
   if (!isYouVersionId(translationId)) return fetchFreeBooks(translationId)

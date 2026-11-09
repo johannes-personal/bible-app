@@ -47,6 +47,11 @@ export function initialRoute(hash: string, last: ChapterRef | null): ChapterRef 
   return fromHash
 }
 
+/** Opens a page by its hash, adding it to the history. */
+export function goTo(hash: string) {
+  location.hash = hash
+}
+
 export function navigate(ref: ChapterRef, replace = false) {
   const hash = hashFor(ref)
   if (replace) {
@@ -70,7 +75,9 @@ export function useRoute(): ChapterRef {
 
   useEffect(() => {
     // The URL shows the chapter; a resumed reading position stays out of it.
-    if (!parseHash(location.hash)) history.replaceState(null, '', hashFor(ref.resume ? chapterOf(ref) : ref))
+    if (!parseHash(location.hash) && !parseStudyHash(location.hash)) {
+      history.replaceState(null, '', hashFor(ref.resume ? chapterOf(ref) : ref))
+    }
     const onChange = () => {
       const next = parseHash(location.hash)
       const replaced = replacement
@@ -84,4 +91,41 @@ export function useRoute(): ChapterRef {
   }, [])
 
   return ref
+}
+
+// Word study pages: #/study, #/study/G0026 (a Hebrew or Greek word) and #/study/en/love.
+
+export type StudyRoute = { kind: 'home' } | { kind: 'word'; strongs: string } | { kind: 'english'; word: string }
+
+/** "g26" -> "G0026"; null if it isn't a Strong's number. */
+export function normalizeStrongs(s: string): string | null {
+  const m = /^([GH])0*(\d{1,4})$/i.exec(s.trim())
+  return m ? m[1].toUpperCase() + m[2].padStart(4, '0') : null
+}
+
+export function parseStudyHash(hash: string): StudyRoute | null {
+  const m = /^#\/study(?:\/(.*))?$/.exec(hash)
+  if (!m) return null
+  const rest = decodeURIComponent(m[1] ?? '').replace(/\/$/, '')
+  if (!rest) return { kind: 'home' }
+  const english = /^en\/(.+)$/.exec(rest)
+  if (english) return { kind: 'english', word: english[1].toLowerCase() }
+  const strongs = normalizeStrongs(rest)
+  return strongs ? { kind: 'word', strongs } : { kind: 'home' }
+}
+
+export function studyHash(route: StudyRoute): string {
+  if (route.kind === 'word') return `#/study/${route.strongs}`
+  if (route.kind === 'english') return `#/study/en/${encodeURIComponent(route.word)}`
+  return '#/study'
+}
+
+export function useStudyRoute(): StudyRoute | null {
+  const [route, setRoute] = useState(() => parseStudyHash(location.hash))
+  useEffect(() => {
+    const onChange = () => setRoute(parseStudyHash(location.hash))
+    window.addEventListener('hashchange', onChange)
+    return () => window.removeEventListener('hashchange', onChange)
+  }, [])
+  return route
 }
