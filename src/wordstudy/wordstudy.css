@@ -43,6 +43,70 @@
   margin-top: 40px;
 }
 
+/* The word being studied, in the header once its title has scrolled away */
+
+.ws-current {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 45%;
+  height: 40px;
+  padding: 0 6px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  animation: ws-current-in 0.15s ease-out;
+}
+
+.ws-current .ws-lemma {
+  font-size: 1.15em;
+}
+
+.ws-current-word {
+  font-weight: 600;
+}
+
+@keyframes ws-current-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+.ws-header .ws-search-toggle {
+  display: none;
+}
+
+@media (max-width: 719px) {
+  /* Phones: the word takes the search box's place; the search button brings the box back. */
+  .ws-header.compact:not(.searching) .ws-search {
+    display: none;
+  }
+  .ws-header.compact:not(.searching) .ws-search-toggle {
+    display: inline-flex;
+    margin-left: auto;
+  }
+  .ws-header.compact:not(.searching) .ws-current {
+    flex: 1 1 auto;
+    max-width: none;
+  }
+  .ws-header.searching .ws-current {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-current {
+    animation: none;
+  }
+}
+
 /* Search */
 
 .ws-search {

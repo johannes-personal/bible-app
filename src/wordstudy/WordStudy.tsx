@@ -20,15 +20,27 @@ export default function WordStudy({ route }: { route: StudyRoute }) {
   }, [route])
   const last = loadStored<ChapterRef | null>(LAST_KEY, null)
   const backHash = last ? hashFor({ translationId: last.translationId, book: last.book, chapter: last.chapter }) : '#/'
+  const compact = useTitleScrolledAway(route)
+  const [searching, setSearching] = useState(false)
+  useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect
+    setSearching(false)
+  }, [route])
 
   return (
     <div className="ws">
-      <header className="app-header">
+      <header className={`app-header ws-header${compact ? ' compact' : ''}${searching ? ' searching' : ''}`}>
         <div className="header-inner">
           <a className="icon-button" href={backHash} aria-label="Back to reading">
             <Icon name="back" />
           </a>
-          <SearchBox route={route} />
+          {compact && <CurrentWord route={route} />}
+          <SearchBox route={route} focus={searching} onLeave={() => setSearching(false)} />
+          {compact && !searching && (
+            <button className="icon-button ws-search-toggle" aria-label="Search for a word" onClick={() => setSearching(true)}>
+              <Icon name="search" />
+            </button>
+          )}
         </div>
       </header>
       <main className="ws-main">
@@ -56,13 +68,68 @@ interface Suggestion {
   hint: string
 }
 
-function SearchBox({ route }: { route: StudyRoute }) {
+/**
+ * Whether the page's title (the word being studied) has scrolled up under the header, so the
+ * header should name the word instead.
+ */
+function useTitleScrolledAway(route: StudyRoute) {
+  const [away, setAway] = useState(false)
+  useEffect(() => {
+    let frame = 0
+    const check = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const title = document.querySelector('.ws-title')
+        const header = document.querySelector('.ws-header')?.getBoundingClientRect().bottom ?? 0
+        setAway(!!title && title.getBoundingClientRect().bottom < header)
+      })
+    }
+    check()
+    window.addEventListener('scroll', check, { passive: true })
+    window.addEventListener('resize', check)
+    return () => {
+      cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', check)
+      window.removeEventListener('resize', check)
+    }
+  }, [route])
+  return away && route.kind !== 'home'
+}
+
+/** The word being studied, for the header once its title has scrolled away; tap to go back up. */
+function CurrentWord({ route }: { route: StudyRoute }) {
+  const { data: names } = useAsync('ws-names', loadNames)
+  const name = route.kind === 'word' ? names?.[route.strongs] : undefined
+  return (
+    <button className="ws-current" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} title="Back to the top">
+      {route.kind === 'english' ? (
+        <>
+          <span className="ws-current-word">{route.word}</span>
+          <span className="muted"> · English</span>
+        </>
+      ) : name ? (
+        <>
+          <span className="ws-lemma" lang={name[4] === 'g' ? 'grc' : 'he'}>{name[0]}</span>{' '}
+          <span className="ws-current-word">{name[1]}</span>
+          <span className="muted"> · {name[2]}</span>
+        </>
+      ) : null}
+    </button>
+  )
+}
+
+function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boolean; onLeave?: () => void }) {
   const [query, setQuery] = useState(route.kind === 'english' ? route.word : '')
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const { data: names } = useAsync('ws-names', loadNames)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Opened from the header's search button (while scrolled down on a phone).
+  useEffect(() => {
+    if (focus) inputRef.current?.focus({ preventScroll: true })
+  }, [focus])
 
   // A new page shows its own word in the box (or nothing), with the suggestions closed.
   const routeWord = route.kind === 'english' ? route.word : ''
@@ -146,7 +213,12 @@ function SearchBox({ route }: { route: StudyRoute }) {
           setOpen(true)
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onBlur={() =>
+          setTimeout(() => {
+            setOpen(false)
+            onLeave?.()
+          }, 150)
+        }
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') setActive((a) => Math.min(a + 1, suggestions.length - 1))
           else if (e.key === 'ArrowUp') setActive((a) => Math.max(a - 1, 0))

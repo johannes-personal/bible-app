@@ -13,6 +13,7 @@
   - English pages have *Same words, other English*: other English words the BSB uses for the same Hebrew and Greek words (for "love": devotion, kindness, lover, beloved…), each with the original words they share.
   - A trail of the words studied recently, in either language, sits under the search box.
   - A word form ("loving") opens its base word's page ("love").
+- Scrolled down a word's page, the header names the word being studied (*חֶסֶד chesed · kindness*, or *love · English*) without getting any taller; tap it to go back to the top. On phones it takes the search box's place, and a search button brings the box back.
 - "Found together with" now also counts Hebrew words with prefixes such as "and" or "to", which were left out before (for *chesed*: *emet*, truth, is now the strongest).
 - A Hebrew or Greek word's page opens with a *Lexicon* card laid out like a dictionary page: pronunciation, part of speech, dictionary forms, root (a link to that word), Strong's definition and how the KJV translates it, beside the numbered meanings from the STEPBible lexicon, with verse references as links. Long entries fold. Pronunciation, roots and the Strong's and KJV lines come from Strong's dictionaries (public domain).
 - A link to the word on Blue Letter Bible (the STEP Bible links didn't find the word).
