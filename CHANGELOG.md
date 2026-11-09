@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.1
+
+- Previous/Next chapter buttons are now also at the top of the chapter, not only at the bottom.
+
 ## 1.5.0
 
 - YouVersion now takes precedence: the about 530 translations both sources carry (such as BSB, ASV and Svenska Kärnbibeln) are read from YouVersion and get YouVersion ids in the URL, e.g. `#/yv-3034/JHN/3` for the BSB. Translations only the Free Use Bible API has keep their ids.
