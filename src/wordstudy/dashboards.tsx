@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAsync } from '../hooks'
-import { studyHash } from '../route'
+import { replaceHash, studyHash } from '../route'
 import {
   formatCount,
   LANGUAGE_NAMES,
@@ -15,6 +15,7 @@ import {
   type Occurrence,
   type WordEntry,
 } from './data'
+import { EnglishLinks } from './bridge'
 import { Explorer } from './explorer'
 import { LexiconCard } from './lexicon'
 import { inScope, scopeLabel, type Mode, type Scope } from './scope'
@@ -155,7 +156,7 @@ function WordDashboard({ strongs, meta, names, word }: {
               <Card
                 id="renderings"
                 title="How it's translated"
-                subtitle={`In ${scopeLabel(meta, scope)}. Select one to see where the BSB uses it.`}
+                subtitle={`In ${scopeLabel(meta, scope)}. Select a bar to see where the BSB uses it, or a word to study it in English.`}
               >
                 <Folded
                   items={renderings}
@@ -164,7 +165,7 @@ function WordDashboard({ strongs, meta, names, word }: {
                     <RankedList
                       items={items.map((r) => ({
                         key: String(r.i),
-                        label: r.label,
+                        label: <EnglishLinks text={r.label} />,
                         value: r.value,
                         active: rendering === r.i,
                         selectLabel: `Show where it's translated “${r.label}”`,
@@ -237,10 +238,18 @@ export function EnglishPage({ word }: { word: string }) {
     const words = await Promise.all(english.entry.strongs.map(([s]) => loadWord(s)))
     return { meta, names, english, words }
   })
+  useBaseWordAddress(word, data?.english?.lemma)
   if (error) return <p className="message">{error.message}</p>
   if (!data) return <Loading />
   if (!data.english) return <NotFound what={`“${word}”`} english />
   return <EnglishDashboard {...data} english={data.english} />
+}
+
+/** A word form ("loving") shows its base word's page ("love"), so the address and trail use it too. */
+function useBaseWordAddress(word: string, lemma: string | undefined) {
+  useEffect(() => {
+    if (lemma && lemma !== word) replaceHash(studyHash({ kind: 'english', word: lemma }))
+  }, [word, lemma])
 }
 
 function EnglishDashboard({ meta, names, english, words }: {
@@ -334,6 +343,32 @@ function EnglishDashboard({ meta, names, english, words }: {
               )}
             />
           </Card>
+          {entry.related.length > 0 && (
+            <Card
+              id="same-words"
+              title="Same words, other English"
+              subtitle="Other English words the BSB uses for the same Hebrew and Greek words."
+            >
+              <ul className="ws-related-english">
+                {entry.related.map(([other, shared, via]) => (
+                  <li key={other}>
+                    <a href={studyHash({ kind: 'english', word: other })}>{other}</a>
+                    <span className="muted">
+                      {formatCount(shared)}× · via{' '}
+                      {via
+                        .filter((s, i) => names[s] && via.findIndex((x) => names[x]?.[1] === names[s][1]) === i)
+                        .map((s, i) => (
+                          <span key={s}>
+                            {i > 0 && ', '}
+                            <a className="ws-via" href={studyHash({ kind: 'word', strongs: s })}>{names[s][1]}</a>
+                          </span>
+                        ))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
         </div>
       </div>
 

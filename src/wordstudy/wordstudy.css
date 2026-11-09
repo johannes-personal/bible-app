@@ -733,25 +733,33 @@ a.ws-ranked-label:hover {
   list-style: none;
 }
 
-.ws-words a {
+.ws-words li {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  color: var(--text);
-  text-decoration: none;
   line-height: 1.25;
 }
 
-.ws-words a:hover {
-  border-color: var(--muted);
-}
-
-.ws-words a.current {
+.ws-words li.current {
   background: var(--accent-soft);
   border-color: transparent;
+}
+
+/* Each chip: its English (links to English pages) over the original (links to its page). */
+.ws-word-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.ws-word-link:hover .ws-word-original {
+  text-decoration: underline;
+  text-decoration-color: var(--muted);
 }
 
 .ws-word-gloss {
@@ -912,9 +920,6 @@ a.ws-ranked-label:hover {
 
 /* The filters in effect: above the dashboard, kept in view under the header while scrolling. */
 .ws-filterbar {
-  position: sticky;
-  top: var(--header-h);
-  z-index: 5;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -925,7 +930,11 @@ a.ws-ranked-label:hover {
   background: var(--bg);
 }
 
+/* Only kept in view while a filter is in effect. */
 .ws-filterbar.active {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 5;
   border-bottom: 1px solid var(--border);
 }
 
@@ -945,4 +954,145 @@ a.ws-ranked-label:hover {
 
 .ws-unused-word {
   margin-top: 16px;
+}
+
+/* English words as links: quiet until hovered. */
+a.ws-en-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 30%, transparent);
+  text-underline-offset: 2px;
+}
+
+a.ws-en-link:hover {
+  color: var(--accent);
+  text-decoration-color: currentColor;
+}
+
+/* Words in a verse: plain text that can be tapped to see the original behind it. */
+.ws-w {
+  display: inline;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ws-w:hover,
+.ws-w[aria-expanded='true'] {
+  background: var(--surface-2);
+  box-shadow: 0 0 0 2px var(--surface-2);
+}
+
+.ws-w:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.ws-word-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.ws-panel-original {
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.ws-panel-original:hover {
+  border-color: var(--muted);
+}
+
+.ws-panel-kicker {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ws-panel-word .ws-lemma {
+  font-size: 20px;
+}
+
+.ws-panel-gloss {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ws-panel-english {
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.ws-panel-english:hover {
+  text-decoration: underline;
+}
+
+.ws-panel-note {
+  margin: 0;
+}
+
+/* Other English words for the same originals. */
+.ws-related-english {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.ws-related-english li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ws-related-english > li > a {
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.ws-related-english a:hover {
+  text-decoration: underline;
+}
+
+a.ws-via {
+  color: inherit;
+}
+
+/* The words studied recently, for going back and forth. */
+.ws-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.ws-trail-item {
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+a.ws-trail-item:hover {
+  border-color: var(--muted);
+}
+
+.ws-trail-item.current {
+  background: var(--surface-2);
+  border-color: transparent;
+  font-weight: 600;
 }

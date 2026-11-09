@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { lemmatizer, parseSenses, partOfSpeech, renderingOf, tokensOf } from '../../scripts/build-word-study.mjs'
 import { normalizeStrongs, parseStudyHash, studyHash } from '../route'
 import { decodeVerse, fold, occurrencesOf, suggestOriginal, type NameEntry } from '../wordstudy/data'
-import { highlightText } from '../wordstudy/highlight'
+import { splitMarked } from '../wordstudy/highlight'
 import { bookScope, inScope, scopeLabel } from '../wordstudy/scope'
 
 describe('word study index (build script)', () => {
@@ -74,11 +74,14 @@ describe('word study data', () => {
     expect(suggestOriginal(names, 'x')).toEqual([])
   })
 
-  it('highlights whole words and phrases, ignoring case', () => {
-    const parts = highlightText('With loving devotion You will lead the people You love.', ['love', 'loving devotion'])
-    const marked = parts.filter((p) => typeof p === 'object').map((p) => (p as { props: { children: string } }).props.children)
-    expect(marked).toEqual(['loving devotion', 'love'])
-    expect(highlightText('Beloved, let us love', ['love']).length).toBe(3) // not inside "Beloved"
+  it('marks whole words and phrases, ignoring case', () => {
+    const parts = splitMarked('With loving devotion You will lead the people You love.', ['love', 'loving devotion'])
+    expect(parts.filter((p) => p.marked).map((p) => p.text)).toEqual(['loving devotion', 'love'])
+    expect(parts.map((p) => p.text).join('')).toBe('With loving devotion You will lead the people You love.')
+    expect(splitMarked('Beloved, let us love', ['love'])).toEqual([
+      { text: 'Beloved, let us ', marked: false }, // not inside "Beloved"
+      { text: 'love', marked: true },
+    ])
   })
 })
 

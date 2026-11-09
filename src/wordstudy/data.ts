@@ -49,6 +49,8 @@ export interface EnglishEntry {
   forms: Record<string, number>
   /** [Strong's number, occurrences, indexes of its renderings that contain the word] */
   strongs: [string, number, number[]][]
+  /** Other English words for the same Hebrew and Greek words: [word, shared uses, Strong's numbers they share most]. */
+  related: [string, number, string[]][]
 }
 
 const cache = new Map<string, Promise<unknown>>()

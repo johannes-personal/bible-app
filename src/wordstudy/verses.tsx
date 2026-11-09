@@ -6,7 +6,7 @@ import { useAsync } from '../hooks'
 import { studyHash } from '../route'
 import { byPosition, formatCount, verseHash, verseKey, type Meta, type Occurrence } from './data'
 import { bookScope, type Scope } from './scope'
-import { highlightText } from './highlight'
+import { EnglishLinks, TappableVerse } from './bridge'
 
 // The verses a word occurs in, with the word marked. Each verse opens in place to show the
 // verses around it and its Hebrew or Greek words (each a link to its own study page), with
@@ -92,7 +92,13 @@ function VerseItem({ meta, o, marks, tag, current, onScope }: {
       </div>
       {open && <p className="ws-context">{around(o.verse - 2, o.verse - 1)}</p>}
       <p className={`ws-verse${verse == null ? ' muted' : ''}`}>
-        {error ? "Couldn't load the verse." : verse == null ? '…' : highlightText(verse, marks)}
+        {error ? (
+          "Couldn't load the verse."
+        ) : verse == null ? (
+          '…'
+        ) : (
+          <TappableVerse text={verse} marks={marks} bookId={book.id} chapter={o.chapter} verse={o.verse} />
+        )}
       </p>
       {open && (
         <>
@@ -112,7 +118,10 @@ function VerseItem({ meta, o, marks, tag, current, onScope }: {
   )
 }
 
-/** The verse's Hebrew or Greek words in English order, each linking to its study page. */
+/**
+ * The verse's Hebrew or Greek words in English order: the English links to its English study
+ * page, the original to its own.
+ */
 function OriginalWords({ bookId, chapter, verse, current }: {
   bookId: string
   chapter: number
@@ -128,9 +137,11 @@ function OriginalWords({ bookId, chapter, verse, current }: {
       {words.map((w, i) => {
         const gloss = w.gloss && !/^[.\s]+$/.test(w.gloss) ? w.gloss : '—'
         return (
-          <li key={i}>
-            <a href={studyHash({ kind: 'word', strongs: w.strongs! })} className={current.has(w.strongs!) ? 'current' : undefined}>
-              <span className="ws-word-gloss">{gloss}</span>
+          <li key={i} className={current.has(w.strongs!) ? 'current' : undefined}>
+            <span className="ws-word-gloss">
+              <EnglishLinks text={gloss} />
+            </span>
+            <a className="ws-word-link" href={studyHash({ kind: 'word', strongs: w.strongs! })}>
               <span className="ws-word-original" lang={w.language === 'greek' ? 'grc' : 'he'}>{w.text}</span>
               <span className="ws-word-translit">{w.transliteration}</span>
             </a>

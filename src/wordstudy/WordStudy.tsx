@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { ChapterRef } from '../api'
 import { Icon } from '../components/Icon'
 import { useAsync } from '../hooks'
-import { goTo, hashFor, LAST_KEY, normalizeStrongs, studyHash, type StudyRoute } from '../route'
+import { goTo, hashFor, LAST_KEY, normalizeStrongs, parseStudyHash, studyHash, takeReplacedHash, type StudyRoute } from '../route'
 import { useSettings } from '../settings'
 import { load as loadStored } from '../storage'
 import { EnglishPage, WordPage } from './dashboards'
@@ -32,6 +32,7 @@ export default function WordStudy({ route }: { route: StudyRoute }) {
         </div>
       </header>
       <main className="ws-main">
+        <Trail route={route} />
         {route.kind === 'home' && <Home />}
         {route.kind === 'word' && <WordPage key={route.strongs} strongs={route.strongs} />}
         {route.kind === 'english' && <EnglishPage key={route.word} word={route.word} />}
@@ -218,5 +219,57 @@ function Home() {
         ))}
       </div>
     </section>
+  )
+}
+
+// -----------------------------------------------------------------------------------------------
+// Trail: the words looked at recently, in either language, for going back and forth.
+
+const TRAIL_KEY = 'bible:study-trail'
+const TRAIL_LENGTH = 8
+
+function loadTrail(): string[] {
+  try {
+    return JSON.parse(sessionStorage.getItem(TRAIL_KEY) ?? '[]') as string[]
+  } catch {
+    return []
+  }
+}
+
+function Trail({ route }: { route: StudyRoute }) {
+  const { data: names } = useAsync('ws-names', loadNames)
+  const current = route.kind === 'home' ? null : studyHash(route)
+  const [trail, setTrail] = useState(loadTrail)
+
+  useEffect(() => {
+    if (!current) return
+    const replaced = takeReplacedHash() // a word form swapped for its base word isn't a visit of its own
+    const next = [...loadTrail().filter((h) => h !== current && h !== replaced), current].slice(-TRAIL_LENGTH)
+    try {
+      sessionStorage.setItem(TRAIL_KEY, JSON.stringify(next))
+    } catch {
+      // The trail is a convenience only.
+    }
+    // oxlint-disable-next-line react/set-state-in-effect
+    setTrail(next)
+  }, [current])
+
+  const items = trail
+    .map((hash) => ({ hash, route: parseStudyHash(hash) }))
+    .filter((t) => t.route && t.route.kind !== 'home')
+  if (items.length < 2) return null
+  return (
+    <nav className="ws-trail" aria-label="Recently studied">
+      <span className="muted">Recent</span>
+      {items.map(({ hash, route: r }) => {
+        const label =
+          r!.kind === 'word' ? (names?.[r!.strongs]?.[1] ?? r!.strongs) : r!.kind === 'english' ? `“${r!.word}”` : ''
+        return hash === current ? (
+          <span key={hash} className="ws-trail-item current" aria-current="page">{label}</span>
+        ) : (
+          <a key={hash} className="ws-trail-item" href={hash}>{label}</a>
+        )
+      })}
+    </nav>
   )
 }

@@ -18,8 +18,8 @@
 //                  most often found in the same verses
 //   l/G00.json…    the same numbers' lexicon entries: part of speech, pronunciation, root,
 //                  Strong's definition, KJV renderings, and the STEPBible senses
-//   e/a.json…      per first letter: English word -> its forms, and the Strong's numbers (and which
-//                  of their renderings) it translates
+//   e/a.json…      per first letter: English word -> its forms, the Strong's numbers (and which of
+//                  their renderings) it translates, and other English words for the same originals
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -583,6 +583,35 @@ async function main() {
   for (const [bucket, data] of buckets) write(`s/${bucket}.json`, data)
   for (const [bucket, data] of lexBuckets) write(`l/${bucket}.json`, data)
 
+  // Other English words for the same Hebrew and Greek words ("kindness" for "love", via chesed).
+  // Each is scored by the uses it shares, weighted by how much of its own use that is, so words
+  // like "devotion" (nearly always chesed) rank high and "one" or "when" (in phrases) drop out.
+  const lemmasOf = new Map() // Strong's number -> [lemma, occurrences]
+  for (const [lemma, e] of english)
+    for (const [s, x] of e.strongs) {
+      if (!lemmasOf.has(s)) lemmasOf.set(s, [])
+      lemmasOf.get(s).push([lemma, x.count])
+    }
+  const relatedEnglish = (lemma, e) => {
+    const scores = new Map()
+    for (const [s, x] of e.strongs) {
+      for (const [other, count] of lemmasOf.get(s) ?? []) {
+        if (other === lemma) continue
+        const r = scores.get(other) ?? { score: 0, via: new Map() }
+        const shared = Math.min(x.count, count)
+        r.score += shared
+        r.via.set(s, (r.via.get(s) ?? 0) + shared)
+        scores.set(other, r)
+      }
+    }
+    for (const [other, r] of scores) r.weighted = (r.score * r.score) / english.get(other).total
+    return [...scores]
+      .filter(([, r]) => r.score >= 2 && r.weighted >= 0.5)
+      .sort((a, b) => b[1].weighted - a[1].weighted)
+      .slice(0, 12)
+      .map(([other, r]) => [other, r.score, [...r.via].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([s]) => s)])
+  }
+
   const letters = new Map()
   for (const [lemma, e] of english) {
     const letter = /^[a-z]/.test(lemma) ? lemma[0] : '_'
@@ -592,6 +621,8 @@ async function main() {
       forms: Object.fromEntries([...e.forms].sort((a, b) => b[1] - a[1])),
       // [Strong's number, occurrences, indexes of its renderings that contain the word]
       strongs: [...e.strongs].sort((a, b) => b[1].count - a[1].count).map(([s, x]) => [s, x.count, x.renderings]),
+      // [other English word, shared uses, the Strong's numbers they share most]
+      related: relatedEnglish(lemma, e),
     }
   }
   for (const [letter, data] of letters) write(`e/${letter}.json`, data)
