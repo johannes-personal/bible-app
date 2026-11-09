@@ -25,11 +25,12 @@ The catalogues are merged per language (`src/youversion/merge.ts`, `src/biblebra
 
 ## Word study
 
-The word study pages (`#/study`) use an index built from the [Berean Standard Bible interlinear](https://bereanbible.com) (public domain, via the Free Use Bible API), where every Hebrew, Aramaic and Greek word carries its Strong's number and the BSB English for it, and from the [STEPBible](https://github.com/STEPBible/STEPBible-Data) brief lexicons (CC BY 4.0). `node scripts/build-word-study.mjs` downloads both (cached in `.cache/word-study`) and writes `public/word-study/`, which is committed:
+The word study pages (`#/study`) use an index built from the [Berean Standard Bible interlinear](https://bereanbible.com) (public domain, via the Free Use Bible API), where every Hebrew, Aramaic and Greek word carries its Strong's number and the BSB English for it, from the [STEPBible](https://github.com/STEPBible/STEPBible-Data) brief lexicons (CC BY 4.0), and from Strong's Hebrew and Greek dictionaries (public domain; the [Open Scriptures](https://github.com/openscriptures/strongs) XML editions). `node scripts/build-word-study.mjs` downloads them (cached in `.cache/word-study`) and writes `public/word-study/`, which is committed:
 
 - `names.json`: every Hebrew and Greek word with its lemma, transliteration, gloss and count;
-- `s/*.json`: per 100 Strong's numbers, each word's definition, English renderings, occurrences and the words most often found in the same verses (by log-likelihood);
+- `s/*.json`: per 100 Strong's numbers, each word's English renderings, occurrences and the words most often found in the same verses (by log-likelihood);
 - `e/*.json`: per first letter, each English word with its forms and the Strong's numbers it translates.
+- `l/*.json`: the same words' lexicon entries (part of speech, pronunciation, root, Strong's definition, KJV renderings, and the STEPBible senses with verse references).
 
 ## Development
 

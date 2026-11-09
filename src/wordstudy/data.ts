@@ -1,3 +1,7 @@
+import type { ChapterRef } from '../api'
+import { DEFAULT_TRANSLATION, hashFor, LAST_KEY } from '../route'
+import { load as loadStored } from '../storage'
+
 // The word study index, built by scripts/build-word-study.mjs into public/word-study/ and
 // served as static files. Everything is loaded on demand and kept for the session.
 
@@ -12,7 +16,6 @@ export interface Meta {
 export type NameEntry = [string, string, string, number, 'h' | 'a' | 'g']
 
 export interface WordEntry {
-  definition: string
   /** English renderings in the BSB and how often each is used. */
   renderings: [string, number][]
   /** Flat pairs: verse code (see `decodeVerse`), rendering index (-1: no English word of its own). */
@@ -21,11 +24,33 @@ export interface WordEntry {
   related: [string, number, number][]
 }
 
+/**
+ * A word's lexicon entry. Text fields use a small markup the app renders: <b>, <i>,
+ * [[r:MAT.9.37|Mat 9:37]] for a verse and [[w:H2616]] for another word.
+ */
+export interface LexiconEntry {
+  partOfSpeech: string
+  pronunciation: string
+  /** Dictionary forms (Greek), e.g. "ἀγάπη, -ης, ἡ". */
+  forms: string
+  /** Where the word comes from, from Strong's, e.g. "from [[w:H2616]]". */
+  root: string
+  /** Strong's definition. */
+  strongs: string
+  /** How the KJV translates it, from Strong's. */
+  kjv: string
+  /** STEPBible senses: [depth, label ("1a", "(b)"), text]. */
+  senses: [number, string, string][]
+  notes: string[]
+}
+
 export interface EnglishEntry {
   total: number
   forms: Record<string, number>
   /** [Strong's number, occurrences, indexes of its renderings that contain the word] */
   strongs: [string, number, number[]][]
+  /** Other English words for the same Hebrew and Greek words: [word, shared uses, Strong's numbers they share most]. */
+  related: [string, number, string[]][]
 }
 
 const cache = new Map<string, Promise<unknown>>()
@@ -44,6 +69,11 @@ function load<T>(file: string): Promise<T> {
 }
 
 export const loadMeta = () => load<Meta>('meta.json')
+
+export async function loadLexicon(strongs: string): Promise<LexiconEntry | null> {
+  const bucket = await load<Record<string, LexiconEntry>>(`l/${strongs.slice(0, 3)}.json`)
+  return bucket[strongs] ?? null
+}
 export const loadNames = () => load<Record<string, NameEntry>>('names.json')
 
 export async function loadWord(strongs: string): Promise<WordEntry | null> {
@@ -130,3 +160,12 @@ export function occurrencesOf(strongs: string, entry: WordEntry, renderings?: nu
 export const formatCount = (n: number) => n.toLocaleString('en-US')
 
 export const LANGUAGE_NAMES = { h: 'Hebrew', a: 'Aramaic', g: 'Greek' } as const
+
+export const verseKey = (o: { book: number; chapter: number; verse: number }) => o.book * 1_000_000 + o.chapter * 1000 + o.verse
+export const byPosition = (a: Occurrence, b: Occurrence) => a.book - b.book || a.chapter - b.chapter || a.verse - b.verse
+
+/** A link to a verse (or chapter) in the reader, in the translation last read in. */
+export function verseHash(meta: Meta, o: { book: number; chapter: number; verse?: number }) {
+  const translationId = loadStored<ChapterRef | null>(LAST_KEY, null)?.translationId ?? DEFAULT_TRANSLATION
+  return hashFor({ translationId, book: meta.books[o.book].id, chapter: o.chapter, verse: o.verse })
+}

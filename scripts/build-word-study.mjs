@@ -2,7 +2,9 @@
 // - the Berean Standard Bible interlinear (public domain), via the Free Use Bible API: every
 //   Hebrew, Aramaic and Greek word with its Strong's number and the BSB English for it;
 // - the STEPBible brief lexicons TBESH and TBESG (Tyndale House, CC BY 4.0) for lemmas,
-//   transliterations and short definitions.
+//   transliterations, parts of speech and definitions;
+// - Strong's dictionaries (public domain; XML editions via Open Scriptures) for pronunciation,
+//   roots, Strong's definitions and KJV renderings.
 //
 //   node scripts/build-word-study.mjs [--cache DIR]
 //
@@ -12,10 +14,12 @@
 // Output (all JSON):
 //   meta.json      books (name, section, original-language words per chapter) and sections
 //   names.json     Strong's number -> [lemma, transliteration, gloss, occurrences, language]
-//   s/G00.json…    per 100 Strong's numbers: definition, English renderings, every occurrence
-//                  and the words most often found in the same verses
-//   e/a.json…      per first letter: English word -> its forms, and the Strong's numbers (and which
-//                  of their renderings) it translates
+//   s/G00.json…    per 100 Strong's numbers: English renderings, every occurrence and the words
+//                  most often found in the same verses
+//   l/G00.json…    the same numbers' lexicon entries: part of speech, pronunciation, root,
+//                  Strong's definition, KJV renderings, and the STEPBible senses
+//   e/a.json…      per first letter: English word -> its forms, the Strong's numbers (and which of
+//                  their renderings) it translates, and other English words for the same originals
 
 import fs from 'node:fs'
 import path from 'node:path'
@@ -27,6 +31,7 @@ const CACHE = path.resolve(args[args.indexOf('--cache') + 1] && args.includes('-
 
 const API = 'https://bible.helloao.org/api'
 const STEP = 'https://raw.githubusercontent.com/STEPBible/STEPBible-Data/master/Lexicons/'
+const STRONGS = 'https://raw.githubusercontent.com/openscriptures/strongs/master/'
 const LEXICONS = [
   'TBESH - Translators Brief lexicon of Extended Strongs for Hebrew - STEPBible.org CC BY.txt',
   'TBESG - Translators Brief lexicon of Extended Strongs for Greek - STEPBible.org CC BY.txt',
@@ -163,21 +168,110 @@ const stripHtml = (s) =>
     .replace(/\s+/g, ' ')
     .replace(/^[\s;:,]+|[\s;:,]+$/g, '')
 
-function shorten(s, max) {
-  if (s.length <= max) return s
-  const cut = s.slice(0, max)
-  return cut.slice(0, Math.max(cut.lastIndexOf(' '), max - 20)).replace(/[\s;,:]+$/, '') + '…'
-}
+const decodeEntities = (s) =>
+  s
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '‹')
+    .replace(/&gt;/g, '›')
+    .replace(/&quot;/g, '"')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&amp;/g, '&')
+
+// Definitions are stored as plain text with a few markers the app renders (and escapes):
+// <b>…</b> and <i>…</i> for emphasis, [[r:MAT.9.37|Mat 9:37]] for a verse reference and
+// [[w:H2616]] for another word. Every other tag is dropped.
+
+/** STEPBible references ("Mat.9.37", "1Co.10.17, 33") -> reader markers. */
+const markRefs = (s) =>
+  s.replace(/<ref='([^']*)'>([^<]*)<\/ref>/gi, (_, target, text) => {
+    const m = /^([1-3]?[A-Za-z]{2,3})\.(\d+)\.(\d+)/.exec(target.trim())
+    const shown = text.replace(/[;,\s]+$/, '').replace(/^([1-3]?[A-Za-z]{2,3})\./, '$1 ')
+    const trailing = /;\s*$/.test(text) ? ';' : ''
+    return m ? `[[r:${m[1].toUpperCase()}.${m[2]}.${m[3]}|${shown}]]${trailing}` : shown + trailing
+  })
+
+const tidy = (s) =>
+  decodeEntities(
+    markRefs(s)
+      .replace(/<(\/?)(b|i)\b[^>]*>/gi, '\uE000$1$2\uE001') // keep <b> and <i>
+      .replace(/<[^>]+>/g, '')
+      .replace(/\uE000(\/?)(b|i)\uE001/g, '<$1$2>'),
+  )
+    .replace(/__/g, '')
+    .replace(/<(b|i)>\s*<\/\1>/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,;.:)])/g, '$1')
+    .trim()
 
 /**
- * Greek entries open with the headword and its endings ("ἀγάπη, -ης, ἡ") and notes on the
- * Septuagint in brackets; the reader wants the meaning, so those go.
+ * The senses of a STEPBible definition as [depth, label, text]. Hebrew entries are outlines
+ * ("1)", "1a)", "1a1)"); Greek entries (Abbott-Smith) number senses "__I.", "__1.", "__(a)",
+ * open with the headword and its endings ("ἀγάπη, -ης, ἡ"), and note the Septuagint in brackets.
  */
-function cleanDefinition(def, lemma) {
-  let d = def.replace(/\[[^\]]*\]/g, '').replace(/__/g, '')
-  const first = d.indexOf(';')
-  if (first > 0 && first < 60 && d.slice(0, first).includes(lemma)) d = d.slice(first + 1)
-  return d.replace(/^[\s;:,]+/, '').replace(/\s*;\s*(;\s*)+/g, '; ').trim()
+export function parseSenses(html, lemma) {
+  const senses = []
+  const notes = []
+  let forms = ''
+  const pieces = html
+    .split(/<br\s*\/?>/i)
+    .map((p) => p.trim())
+    .filter(Boolean)
+  pieces.forEach((raw, i) => {
+    if (i === 0 && /^:/.test(raw)) return // the meaning this extended number stands for
+    const piece = raw.replace(/\[[^[\]]*\]/g, '') // notes in brackets, mostly on the Septuagint
+    const plain = tidy(piece)
+    if (!plain || /^[;,.\s]*$/.test(plain)) return
+    if (i === 0 && lemma && piece.includes(`<b>${lemma}</b>`)) {
+      forms = plain.replace(/<\/?[bi]>/g, '').replace(/[,;]\s*$/, '')
+      return
+    }
+    if (/^Also means:/i.test(plain)) return notes.push(plain)
+    const hebrew = /^(\d+[a-z]?(?:\d+[a-z]?)*)\)\s*/.exec(plain)
+    const greek = /^(?:<b>)?\s*([IVX]+|\d+|\([a-z]\)|\([ivx]+\))\.?\s*(?:<\/b>)?\s+/.exec(plain)
+    if (hebrew) {
+      const label = hebrew[1]
+      const depth = label.match(/\d+|[a-z]/g).length - 1
+      senses.push([depth, label, plain.slice(hebrew[0].length).trim()])
+    } else if (greek && /^__/.test(piece.trim())) {
+      const label = greek[1]
+      const depth = /^[IVX]+$/.test(label) ? 0 : /^\d+$/.test(label) ? 1 : /^\([a-z]\)$/.test(label) ? 2 : 3
+      senses.push([depth, label, plain.slice(greek[0].length).trim()])
+    } else if (senses.length) {
+      senses[senses.length - 1][2] += ' ' + plain
+    } else {
+      senses.push([0, '', plain.replace(/^[;:,\s]+/, '').trim()])
+    }
+  })
+  // Depths relative to the shallowest, so an entry without roman numerals starts at 0.
+  const min = Math.min(...senses.map((s) => s[0]))
+  for (const s of senses) s[0] -= min
+  return { forms, senses: senses.filter((s) => s[2] || s[1]), notes }
+}
+
+/** "G:N-F" -> "Noun, feminine"; "N:N-M-P" -> "Name of a man". */
+export function partOfSpeech(code) {
+  // "G:A / G:ADV" -> "Adjective or adverb"
+  if (code.includes('/') && code.includes(' / ')) {
+    const parts = [...new Set(code.split(' / ').map((c) => partOfSpeech(c.trim())).filter(Boolean))]
+    return parts.map((p, i) => (i ? p.toLowerCase() : p)).join(' or ')
+  }
+  const [lang, rest = ''] = code.split(':')
+  const [kind, gender = '', what = ''] = rest.split('-')
+  const genders = { M: 'masculine', F: 'feminine', N: 'neuter', 'M/F': 'masculine or feminine' }
+  if (lang === 'N') {
+    if (what.startsWith('P')) return gender === 'F' ? 'Name of a woman' : gender === 'M' ? 'Name of a man' : 'Name of a people'
+    if (what.startsWith('L')) return 'Name of a place'
+    if (what.startsWith('T')) return 'Name or title'
+    return 'Proper name'
+  }
+  const kinds = {
+    N: 'Noun', V: 'Verb', A: 'Adjective', ADV: 'Adverb', Adv: 'Adverb', PREP: 'Preposition', Prep: 'Preposition',
+    CONJ: 'Conjunction', Conj: 'Conjunction', PRT: 'Particle', COND: 'Conditional particle', INJ: 'Interjection',
+    Intj: 'Interjection', D: 'Article', P: 'Pronoun', DemP: 'Demonstrative pronoun', Intg: 'Interrogative',
+  }
+  const name = kinds[kind] ?? ''
+  if (kind === 'A' && gender === 'NUI') return 'Number'
+  return name && genders[gender] ? `${name}, ${genders[gender]}` : name
 }
 
 /** The first entry per plain Strong's number ("H2617" for "H2617a" and "H2617b"). */
@@ -195,7 +289,59 @@ function parseLexicon(text) {
       translit: cols[4].trim().replace(/\./g, ''),
       // "to speak: speak" -> "to speak"
       gloss: stripHtml(cols[6]).split(':')[0].trim(),
-      definition: shorten(cleanDefinition(stripHtml(cols[7]), lemma), 420),
+      pos: partOfSpeech(cols[5].trim()),
+      aramaic: cols[5].trim().startsWith('A:'),
+      ...parseSenses(cols[7], lemma),
+    })
+  }
+  return entries
+}
+
+/** Strong's own dictionary (public domain): pronunciation, root, definition and KJV renderings. */
+function parseStrongsGreek(xml) {
+  const entries = new Map()
+  for (const m of xml.matchAll(/<entry strongs="(\d+)">([\s\S]*?)<\/entry>/g)) {
+    const body = m[2]
+    const field = (tag) => new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(body)?.[1] ?? ''
+    const words = (s) =>
+      s
+        // A few references marked Greek point past the last Greek number (5624): they're Hebrew.
+        .replace(/<strongsref language="GREEK" strongs="(\d+)"\/>/g, (_, n) =>
+          Number(n) > 5624 ? `[[w:H${String(Number(n)).padStart(4, '0')}]]` : `[[w:G${String(Number(n)).padStart(4, '0')}]]`,
+        )
+        .replace(/<strongsref language="HEBREW" strongs="(\d+)"\/>/g, (_, n) => `[[w:H${String(Number(n)).padStart(4, '0')}]]`)
+        .replace(/<greek [^>]*unicode="([^"]*)"[^>]*\/>/g, '$1')
+    const head = /<greek [^>]*unicode="([^"]*)" translit="([^"]*)"/.exec(body)
+    entries.set(`G${m[1].slice(-4)}`, {
+      lemma: head?.[1] ?? '',
+      translit: head?.[2] ?? '',
+      pron: /<pronunciation strongs="([^"]*)"/.exec(body)?.[1] ?? '',
+      root: tidy(words(field('strongs_derivation'))).replace(/[;,.]\s*$/, ''),
+      definition: tidy(field('strongs_def')),
+      kjv: tidy(field('kjv_def').replace(/^:--/, '')).replace(/\.?\s*Compare,?$/, '').replace(/\.$/, ''),
+    })
+  }
+  return entries
+}
+
+function parseStrongsHebrew(xml) {
+  const entries = new Map()
+  for (const m of xml.matchAll(/<div type="entry" n="(\d+)">([\s\S]*?)<\/div>/g)) {
+    const body = m[2]
+    const note = (type) => new RegExp(`<note type="${type}">([\\s\\S]*?)</note>`).exec(body)?.[1] ?? ''
+    const words = (s) =>
+      s
+        .replace(/<w [^>]*src="(\d+)"[^>]*\/>/g, (_, n) => `[[w:H${String(Number(n)).padStart(4, '0')}]]`)
+        .replace(/<w [^>]*lemma="([^"]*)"[^>]*\/>/g, '$1') // a form without its own number
+    const head = /<w [^>]*lemma="([^"]*)"[^>]*xlit="([^"]*)"/.exec(body)
+    entries.set(`H${m[1].padStart(4, '0')}`, {
+      lemma: head?.[1] ?? '',
+      translit: head?.[2] ?? '',
+      aramaic: /xml:lang="arc"/.test(body),
+      pron: /<w [^>]*POS="([^"]*)"/.exec(body)?.[1] ?? '',
+      root: tidy(words(note('exegesis'))).replace(/[;,.]\s*$/, ''),
+      definition: tidy(note('explanation').replace(/<\/?hi>/g, '')),
+      kjv: tidy(words(note('translation'))).replace(/\.$/, ''), // may end "Compare [[w:H3050]]"
     })
   }
   return entries
@@ -206,8 +352,12 @@ function parseLexicon(text) {
 
 // Verbs too common to say anything about the words around them ("to be", "to say").
 const TOO_COMMON = new Set(['H1961', 'H0559', 'G1510', 'G3004', 'G2036', 'G5346', 'G1096'])
-/** Words that carry meaning: nouns, verbs and adjectives (not particles, pronouns or prepositions). */
-const isContent = (strongs, parsing) => !TOO_COMMON.has(strongs) && /^(N|V|Adj)\b/.test(parsing ?? '')
+/**
+ * Words that carry meaning: nouns, verbs and adjectives (not particles, pronouns or prepositions).
+ * Hebrew codes list attached prefixes first ("Conj-w, Prep-l | V-Hifil-Inf"); the word itself is last.
+ */
+const isContent = (strongs, parsing) =>
+  !TOO_COMMON.has(strongs) && /^(N|V|Adj)\b/.test((parsing ?? '').split('|').pop().trim())
 
 /** Log-likelihood ratio (G²) of two words appearing in the same verses more often than by chance. */
 function logLikelihood(both, a, b, total) {
@@ -248,6 +398,10 @@ async function main() {
   for (const file of LEXICONS) {
     for (const [k, v] of parseLexicon(await cached(file, STEP + encodeURIComponent(file)))) lexicon.set(k, v)
   }
+  const strongsDictionary = new Map([
+    ...parseStrongsGreek(await cached('strongsgreek.xml', `${STRONGS}greek/StrongsGreekDictionaryXML_1.4/strongsgreek.xml`)),
+    ...parseStrongsHebrew(await cached('StrongHebrewG.xml', `${STRONGS}hebrew/StrongHebrewG.xml`)),
+  ])
 
   // Per Strong's number: occurrences, renderings and language.
   const words = new Map()
@@ -361,6 +515,7 @@ async function main() {
   fs.rmSync(OUT, { recursive: true, force: true })
   fs.mkdirSync(path.join(OUT, 's'), { recursive: true })
   fs.mkdirSync(path.join(OUT, 'e'), { recursive: true })
+  fs.mkdirSync(path.join(OUT, 'l'), { recursive: true })
   const write = (name, data) => fs.writeFileSync(path.join(OUT, name), JSON.stringify(data))
 
   const sectionOf = (bookIndex) => {
@@ -382,21 +537,80 @@ async function main() {
     const lex = lexicon.get(strongs)
     nameList[strongs] = [lex?.lemma ?? '', lex?.translit || commonForm(w), lex?.gloss ?? '', w.occurrences.length / 2, lang[w.language] ?? 'h']
   }
-  write('names.json', nameList)
+  // Dictionary words the BSB's tagging never uses (other manuscript readings, forms it tags under
+  // a related number, roots) still get a page with their lexicon entry, so links to them work.
+  // (Strong's own numbers only; STEPBible's extended ones past them are Septuagint vocabulary.)
+  const inStrongs = (n) => Number(n.slice(1)) <= (n[0] === 'G' ? 5624 : 8674)
+  const allNumbers = [...new Set([...lexicon.keys(), ...strongsDictionary.keys()])].filter(inStrongs).sort()
+  for (const strongs of allNumbers) {
+    if (nameList[strongs]) continue
+    const lex = lexicon.get(strongs)
+    const dict = strongsDictionary.get(strongs)
+    const gloss = lex?.gloss || (dict?.definition ?? '').replace(/<\/?[bi]>/g, '').split(/[;,(]/)[0].trim()
+    const language = strongs[0] === 'G' ? 'g' : lex?.aramaic || dict?.aramaic ? 'a' : 'h'
+    nameList[strongs] = [lex?.lemma || dict?.lemma || '', lex?.translit || dict?.translit || '', gloss, 0, language]
+  }
+  write('names.json', Object.fromEntries(Object.entries(nameList).sort(([a], [b]) => a.localeCompare(b))))
 
   const buckets = new Map()
+  const lexBuckets = new Map()
   for (const [strongs, w] of words) {
     const bucket = strongs.slice(0, 3)
     if (!buckets.has(bucket)) buckets.set(bucket, {})
-    const lex = lexicon.get(strongs)
     buckets.get(bucket)[strongs] = {
-      definition: lex?.definition ?? '',
       renderings: renderingList(w),
       occurrences: w.occurrences,
       related: related.get(strongs) ?? [],
     }
   }
+  // The lexicon entries, in their own files (only a word's own page needs them), for every word.
+  for (const strongs of Object.keys(nameList)) {
+    const bucket = strongs.slice(0, 3)
+    const lex = lexicon.get(strongs)
+    const dict = strongsDictionary.get(strongs)
+    if (!lexBuckets.has(bucket)) lexBuckets.set(bucket, {})
+    lexBuckets.get(bucket)[strongs] = {
+      partOfSpeech: lex?.pos ?? '',
+      pronunciation: dict?.pron ?? '',
+      forms: lex?.forms ?? '',
+      root: dict?.root ?? '',
+      strongs: dict?.definition ?? '',
+      kjv: dict?.kjv ?? '',
+      senses: lex?.senses ?? [],
+      notes: lex?.notes ?? [],
+    }
+  }
   for (const [bucket, data] of buckets) write(`s/${bucket}.json`, data)
+  for (const [bucket, data] of lexBuckets) write(`l/${bucket}.json`, data)
+
+  // Other English words for the same Hebrew and Greek words ("kindness" for "love", via chesed).
+  // Each is scored by the uses it shares, weighted by how much of its own use that is, so words
+  // like "devotion" (nearly always chesed) rank high and "one" or "when" (in phrases) drop out.
+  const lemmasOf = new Map() // Strong's number -> [lemma, occurrences]
+  for (const [lemma, e] of english)
+    for (const [s, x] of e.strongs) {
+      if (!lemmasOf.has(s)) lemmasOf.set(s, [])
+      lemmasOf.get(s).push([lemma, x.count])
+    }
+  const relatedEnglish = (lemma, e) => {
+    const scores = new Map()
+    for (const [s, x] of e.strongs) {
+      for (const [other, count] of lemmasOf.get(s) ?? []) {
+        if (other === lemma) continue
+        const r = scores.get(other) ?? { score: 0, via: new Map() }
+        const shared = Math.min(x.count, count)
+        r.score += shared
+        r.via.set(s, (r.via.get(s) ?? 0) + shared)
+        scores.set(other, r)
+      }
+    }
+    for (const [other, r] of scores) r.weighted = (r.score * r.score) / english.get(other).total
+    return [...scores]
+      .filter(([, r]) => r.score >= 2 && r.weighted >= 0.5)
+      .sort((a, b) => b[1].weighted - a[1].weighted)
+      .slice(0, 12)
+      .map(([other, r]) => [other, r.score, [...r.via].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([s]) => s)])
+  }
 
   const letters = new Map()
   for (const [lemma, e] of english) {
@@ -407,12 +621,14 @@ async function main() {
       forms: Object.fromEntries([...e.forms].sort((a, b) => b[1] - a[1])),
       // [Strong's number, occurrences, indexes of its renderings that contain the word]
       strongs: [...e.strongs].sort((a, b) => b[1].count - a[1].count).map(([s, x]) => [s, x.count, x.renderings]),
+      // [other English word, shared uses, the Strong's numbers they share most]
+      related: relatedEnglish(lemma, e),
     }
   }
   for (const [letter, data] of letters) write(`e/${letter}.json`, data)
 
   let bytes = 0
-  for (const dir of ['', 's', 'e'])
+  for (const dir of ['', 's', 'e', 'l'])
     for (const f of fs.readdirSync(path.join(OUT, dir))) {
       const p = path.join(OUT, dir, f)
       if (fs.statSync(p).isFile()) bytes += fs.statSync(p).size

@@ -226,8 +226,9 @@ export default function App() {
             <Icon name="chevronDown" />
           </button>
           <span className="spacer" />
-          <a className="icon-button" href="#/study" aria-label="Word study" title="Word study">
+          <a className="study-link" href="#/study" aria-label="Word study" title="Word study">
             <Icon name="search" />
+            <span>Study</span>
           </a>
           <button className="icon-button" onClick={() => setPanel('settings')} aria-label="Reading settings">
             <span className="aa" aria-hidden="true">Aa</span>

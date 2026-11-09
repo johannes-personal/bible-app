@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.7.0
+
+- Word study is now a dashboard: an overview that fits on one screen, with collapsible cards.
+  - *Where it's used* is a heatmap you drill into: both testaments and their sections at once (each previewing its books), then the books of a section (each previewing its chapters), then a book's chapters. Counts or per 1,000 words.
+  - Selecting a part of the Bible, an English rendering, a word it's found together with, or (for English words) a Hebrew or Greek word narrows everything else on the page. The filters in effect show in a bar above the dashboard, which stays in view while scrolling, with the number of verses and a button to clear each (or all).
+  - A verse opens in place: the verses around it, its Hebrew or Greek words, and links to read it in the reader or see every occurrence in that book. Each word chip links both ways: its English to the English word's page, the Hebrew or Greek to its own.
+- Moving between the languages:
+  - Any word in a verse can be tapped to see the Hebrew or Greek word behind it (from the interlinear), with links to study the original or the English word.
+  - *How it's translated* links each English word to its page.
+  - On English pages, the names in the *Where it's used* legend link to those Hebrew and Greek words' pages.
+  - English pages have *Same words, other English*: other English words the BSB uses for the same Hebrew and Greek words (for "love": devotion, kindness, lover, beloved…), each with the original words they share.
+  - A trail of the words studied recently, in either language, sits under the search box.
+  - A word form ("loving") opens its base word's page ("love").
+- Scrolled down a word's page, the header names the word being studied (*חֶסֶד chesed · kindness*, or *love · English*) without getting any taller; tap it to go back to the top. On phones it takes the search box's place, and a search button brings the box back.
+- "Found together with" now also counts Hebrew words with prefixes such as "and" or "to", which were left out before (for *chesed*: *emet*, truth, is now the strongest).
+- A Hebrew or Greek word's page opens with a *Lexicon* card laid out like a dictionary page: pronunciation, part of speech, dictionary forms, root (a link to that word), Strong's definition and how the KJV translates it, beside the numbered meanings from the STEPBible lexicon, with verse references as links. Long entries fold. Pronunciation, roots and the Strong's and KJV lines come from Strong's dictionaries (public domain).
+- A link to the word on Blue Letter Bible (the STEP Bible links didn't find the word).
+- Every word in Strong's dictionaries has a page, including the 422 the BSB's Hebrew and Greek texts don't use (from other manuscripts, or tagged under a related word); those show their lexicon entry. Links between words in the lexicon all lead somewhere, and four of Strong's Greek entries that point to Hebrew words (such as *agapaō*'s "compare H5689") now link to the Hebrew word.
+- The reader's header has a labelled "Study" button (just the icon on narrow phones).
+
 ## 1.6.0
 
 - Word study (the search button in the header): search an English word to see which Hebrew and Greek words it translates, or a Hebrew or Greek word (by transliteration, such as "chesed", or Strong's number, such as G26) to see:

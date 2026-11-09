@@ -47,6 +47,22 @@ export function initialRoute(hash: string, last: ChapterRef | null): ChapterRef 
   return fromHash
 }
 
+let replacedHash: string | null = null
+
+/** Swaps the current page for another without a history entry (e.g. a word form for its base word). */
+export function replaceHash(hash: string) {
+  replacedHash = location.hash
+  history.replaceState(null, '', hash)
+  window.dispatchEvent(new HashChangeEvent('hashchange'))
+}
+
+/** The page the last `replaceHash` swapped out, once (so a trail of pages can drop it). */
+export function takeReplacedHash(): string | null {
+  const hash = replacedHash
+  replacedHash = null
+  return hash
+}
+
 /** Opens a page by its hash, adding it to the history. */
 export function goTo(hash: string) {
   location.hash = hash

@@ -181,6 +181,41 @@ button:disabled {
   flex-shrink: 0;
 }
 
+/* Word study: icon and label, or just the icon where the header is tight. */
+.study-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.study-link:hover {
+  background: var(--surface-2);
+}
+
+.study-link .icon {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 400px) {
+  .study-link {
+    width: 40px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .study-link span {
+    display: none;
+  }
+}
+
 .icon-button {
   display: inline-flex;
   align-items: center;
