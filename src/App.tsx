@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchBooks, fetchChapter, fetchCrossRefs, fetchTranslations, findTranslation, type Book, type ChapterRef, type Translation } from './api'
 import { relatedVerses } from './crossrefs'
 import type { VerseRange } from './references'
@@ -7,7 +7,10 @@ import { usePlayer } from './audio/usePlayer'
 import { Icon } from './components/Icon'
 import { PassagePicker } from './components/PassagePicker'
 import { PlayerBar } from './components/PlayerBar'
+import type { Anchor } from './components/Popover'
 import { Reader } from './components/Reader'
+import { StudyBar } from './components/StudyBar'
+import { VerseWordsPopover } from './components/VerseWords'
 import { SettingsPanel } from './components/SettingsPanel'
 import { TranslationPicker } from './components/TranslationPicker'
 import { parseChapter } from './content'
@@ -18,7 +21,9 @@ import { BB_NARRATOR } from './biblebrain/api'
 import { isYouVersionId } from './youversion/api'
 import { useSettings } from './settings'
 import { save } from './storage'
+import { clearStudyReturn, loadStudyReturn } from './studyReturn'
 import { rememberTranslation } from './translations'
+import { verseOffset, versesOfBsb } from './versification'
 
 type Panel = 'passage' | 'translation' | 'settings' | null
 
@@ -171,6 +176,66 @@ export default function App() {
   const { play } = player
   const onVerseClick = useCallback((index: number) => play(index), [play])
 
+  // A verse's original words, from its number or a long press.
+  const [verseWords, setVerseWords] = useState<{ verse: number; anchor: Anchor } | null>(null)
+  const onVerseWords = useCallback((verse: number, anchor: Anchor) => setVerseWords({ verse, anchor }), [])
+  const closeVerseWords = useCallback(() => setVerseWords(null), [])
+  useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect
+    setVerseWords(null)
+  }, [ref.translationId, ref.book, ref.chapter])
+  const verseCount = parsed?.verses.at(-1)?.number ?? 0
+
+  // Opened from word study: mark the word's verses here and offer the way back, until the
+  // reader moves to another chapter or the bar is dismissed.
+  const [study, setStudy] = useState(loadStudyReturn)
+  useEffect(() => {
+    if (study && (study.book !== ref.book || study.chapter !== ref.chapter)) {
+      clearStudyReturn()
+      // oxlint-disable-next-line react/set-state-in-effect
+      setStudy(null)
+    }
+  }, [study, ref.book, ref.chapter])
+  const closeStudy = useCallback(() => {
+    clearStudyReturn()
+    setStudy(null)
+  }, [])
+  const { data: studyMarks } = useAsync(
+    study ? `marks/${JSON.stringify(study.word)}/${study.book}/${study.chapter}` : null,
+    () => import('./wordstudy/marks').then((m) => m.chapterMarks(study!.word, study!.book, study!.chapter)),
+  )
+  const isBsb = translation?.id === 'BSB' || translation?.freeId === 'BSB'
+  const marks = useMemo(() => {
+    if (!study || !studyMarks || !data || studyMarks.book !== data.book.id || studyMarks.chapter !== data.chapter.number) return undefined
+    const offset = verseOffset(data.book.id, verseCount, studyMarks.bsbVerseCount)
+    return {
+      verses: new Set(studyMarks.verses.flatMap((v) => versesOfBsb(v, offset))),
+      phrases: isBsb ? studyMarks.phrases : null,
+      strongs: new Set(studyMarks.strongs),
+    }
+  }, [study, studyMarks, data, verseCount, isBsb])
+  // Steps through the marked verses in order, starting from the first one not yet scrolled
+  // past (under the bar), and wraps around.
+  const lastMarked = useRef(0)
+  useEffect(() => {
+    lastMarked.current = 0
+  }, [ref.book, ref.chapter])
+  const nextMarkedVerse = useCallback(() => {
+    const verses = [...document.querySelectorAll<HTMLElement>('.reader .verse.studied')]
+    const number = (v: HTMLElement) => Number(v.dataset.verse)
+    const target =
+      (lastMarked.current
+        ? verses.find((v) => number(v) > lastMarked.current)
+        : verses.find((v) => v.getBoundingClientRect().bottom > (document.querySelector('.study-bar')?.getBoundingClientRect().bottom ?? 0))) ??
+      verses[0]
+    if (!target) return
+    lastMarked.current = number(target)
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    for (const v of document.querySelectorAll('.reader .verse.flash')) v.classList.remove('flash')
+    void target.offsetWidth // restart the animation
+    target.classList.add('flash')
+  }, [])
+
   // Arrow keys turn pages.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -256,6 +321,9 @@ export default function App() {
           </div>
         ) : data && parsed ? (
           <>
+            {study && (
+              <StudyBar study={study} count={marks ? marks.verses.size : null} onNext={nextMarkedVerse} onClose={closeStudy} />
+            )}
             {chapterNav('top')}
             <Reader
               title={title}
@@ -269,7 +337,21 @@ export default function App() {
               related={related}
               books={books ?? NO_BOOKS}
               onVerseClick={player.state.status === 'idle' ? undefined : onVerseClick}
+              onVerseWords={onVerseWords}
+              marks={marks}
             />
+            {verseWords && (
+              <VerseWordsPopover
+                verse={verseWords.verse}
+                anchor={verseWords.anchor}
+                bookId={data.book.id}
+                bookName={data.book.name}
+                chapter={data.chapter.number}
+                verseCount={verseCount}
+                current={marks?.strongs}
+                onClose={closeVerseWords}
+              />
+            )}
             {chapterNav('bottom')}
             <footer className="attribution">
               {data.translation.source === 'youversion' || data.translation.source === 'biblebrain' ? (

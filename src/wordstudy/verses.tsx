@@ -3,10 +3,10 @@ import { fetchFreeChapterOnly, fetchInterlinear } from '../api'
 import { Icon } from '../components/Icon'
 import { parseChapter } from '../content'
 import { useAsync } from '../hooks'
-import { studyHash } from '../route'
 import { byPosition, formatCount, verseHash, verseKey, type Meta, type Occurrence } from './data'
 import { bookScope, type Scope } from './scope'
-import { EnglishLinks, TappableVerse } from './bridge'
+import { TappableVerse } from './bridge'
+import { OriginalWordList } from './originals'
 
 // The verses a word occurs in, with the word marked. Each verse opens in place to show the
 // verses around it and its Hebrew or Greek words (each a link to its own study page), with
@@ -130,26 +130,8 @@ function OriginalWords({ bookId, chapter, verse, current }: {
 }) {
   const { data, error } = useAsync(`interlinear-${bookId}.${chapter}`, () => fetchInterlinear(bookId, chapter))
   if (error) return null
-  const words = (data?.get(verse) ?? []).filter((w) => w.strongs).sort((a, b) => a.bsbPos - b.bsbPos)
   if (!data) return <p className="muted ws-words-loading">Loading the original words…</p>
-  return (
-    <ul className="ws-words" aria-label="Original words">
-      {words.map((w, i) => {
-        const gloss = w.gloss && !/^[.\s]+$/.test(w.gloss) ? w.gloss : '—'
-        return (
-          <li key={i} className={current.has(w.strongs!) ? 'current' : undefined}>
-            <span className="ws-word-gloss">
-              <EnglishLinks text={gloss} />
-            </span>
-            <a className="ws-word-link" href={studyHash({ kind: 'word', strongs: w.strongs! })}>
-              <span className="ws-word-original" lang={w.language === 'greek' ? 'grc' : 'he'}>{w.text}</span>
-              <span className="ws-word-translit">{w.transliteration}</span>
-            </a>
-          </li>
-        )
-      })}
-    </ul>
-  )
+  return <OriginalWordList words={data.get(verse) ?? []} current={current} />
 }
 
 const chapterText = new Map<string, Promise<Map<number, string>>>()

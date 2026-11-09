@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.0
+
+- From the reader to word study: tap a verse number, or press and hold a verse, to see its Hebrew or Greek words in the order of the English, as in word study. Each word's English links to its English study page, and the original word to its own page. This works in any translation, because it goes by verse; the words come from the BSB interlinear.
+  - In translations that number a psalm's title as verse 1 (or 1–2), such as the Dutch NBG 1951, the verses are lined up with the BSB's, with a note saying so.
+- From word study to the reader: a chapter opened from a word's page (a verse's "Read" link, or a reference in the lexicon) marks every verse in it that uses the word, and in the BSB the word itself. A bar under the header names the word and leads back to its page. Its verse count steps through the marked verses, and ✕ dismisses it. It goes away on moving to another chapter.
+- Popovers open on whichever side of their verse has more room, and stay between the header and the player.
+
 ## 1.7.0
 
 - Word study is now a dashboard: an overview that fits on one screen, with collapsible cards.
