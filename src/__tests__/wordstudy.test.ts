@@ -4,6 +4,7 @@ import { lemmatizer, renderingOf, tokensOf } from '../../scripts/build-word-stud
 import { normalizeStrongs, parseStudyHash, studyHash } from '../route'
 import { decodeVerse, fold, occurrencesOf, suggestOriginal, type NameEntry } from '../wordstudy/data'
 import { highlightText } from '../wordstudy/highlight'
+import { bookScope, inScope, scopeLabel } from '../wordstudy/scope'
 
 describe('word study index (build script)', () => {
   it('keeps the meaning-bearing core of a rendering', () => {
@@ -78,5 +79,34 @@ describe('word study data', () => {
     const marked = parts.filter((p) => typeof p === 'object').map((p) => (p as { props: { children: string } }).props.children)
     expect(marked).toEqual(['loving devotion', 'love'])
     expect(highlightText('Beloved, let us love', ['love']).length).toBe(3) // not inside "Beloved"
+  })
+})
+
+describe('word study scope', () => {
+  const meta = {
+    totalVerses: 0,
+    sections: ['Law', 'Minor prophets'],
+    books: [
+      { id: 'GEN', name: 'Genesis', section: 0, words: [10, 10] },
+      { id: 'HOS', name: 'Hosea', section: 1, words: [5, 5, 5, 5, 5, 5] },
+      { id: 'JOL', name: 'Joel', section: 1, words: [5, 5, 5] },
+    ],
+  }
+
+  it('narrows from the whole Bible to a section, a book and a chapter', () => {
+    const hosea6 = { book: 1, chapter: 6 }
+    expect(inScope(meta, {}, hosea6)).toBe(true)
+    expect(inScope(meta, { section: 1 }, hosea6)).toBe(true)
+    expect(inScope(meta, { section: 0 }, hosea6)).toBe(false)
+    expect(inScope(meta, bookScope(meta, 1), hosea6)).toBe(true)
+    expect(inScope(meta, bookScope(meta, 2), hosea6)).toBe(false)
+    expect(inScope(meta, { ...bookScope(meta, 1), chapter: 5 }, hosea6)).toBe(false)
+  })
+
+  it('names the scope', () => {
+    expect(scopeLabel(meta, {})).toBe('the whole Bible')
+    expect(scopeLabel(meta, { section: 1 })).toBe('Minor prophets')
+    expect(scopeLabel(meta, { ...bookScope(meta, 1), chapter: 6 })).toBe('Hosea 6')
+    expect(bookScope(meta, 1)).toEqual({ section: 1, book: 1 })
   })
 })

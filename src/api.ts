@@ -177,6 +177,23 @@ const freeIdOf = (translationId: string) => entryOf(translationId).then((t) => t
 const fetchFreeBooks = (id: string) => getJson<{ books: Book[] }>(`/api/${id}/books.json`).then((d) => d.books)
 const fetchFreeChapter = (id: string, ref: ChapterRef) => getJson<ChapterData>(`/api/${id}/${ref.book}/${ref.chapter}.json`)
 
+export interface InterlinearWord {
+  /** Position in the BSB's English word order. */
+  bsbPos: number
+  language: string
+  text: string
+  transliteration: string
+  strongs: string | null
+  /** The BSB English for this word; null or ". . ." when it has none of its own. */
+  gloss: string | null
+}
+
+/** The BSB interlinear for a chapter: every Hebrew, Aramaic or Greek word with its English. */
+export const fetchInterlinear = (book: string, chapter: number) =>
+  getJson<{ chapter: { content: { verse: number; words: InterlinearWord[] }[] } }>(
+    `/api/d/bsb-interlinear/${book}/${chapter}.json`,
+  ).then((d) => new Map(d.chapter.content.map((v) => [v.verse, v.words])))
+
 /** A chapter straight from the Free Use Bible API, without other sources' narration (for word study). */
 export const fetchFreeChapterOnly = (translationId: string, book: string, chapter: number) =>
   fetchFreeChapter(translationId, { translationId, book, chapter })

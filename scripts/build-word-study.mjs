@@ -206,8 +206,12 @@ function parseLexicon(text) {
 
 // Verbs too common to say anything about the words around them ("to be", "to say").
 const TOO_COMMON = new Set(['H1961', 'H0559', 'G1510', 'G3004', 'G2036', 'G5346', 'G1096'])
-/** Words that carry meaning: nouns, verbs and adjectives (not particles, pronouns or prepositions). */
-const isContent = (strongs, parsing) => !TOO_COMMON.has(strongs) && /^(N|V|Adj)\b/.test(parsing ?? '')
+/**
+ * Words that carry meaning: nouns, verbs and adjectives (not particles, pronouns or prepositions).
+ * Hebrew codes list attached prefixes first ("Conj-w, Prep-l | V-Hifil-Inf"); the word itself is last.
+ */
+const isContent = (strongs, parsing) =>
+  !TOO_COMMON.has(strongs) && /^(N|V|Adj)\b/.test((parsing ?? '').split('|').pop().trim())
 
 /** Log-likelihood ratio (G²) of two words appearing in the same verses more often than by chance. */
 function logLikelihood(both, a, b, total) {

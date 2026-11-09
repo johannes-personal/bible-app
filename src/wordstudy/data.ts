@@ -1,3 +1,7 @@
+import type { ChapterRef } from '../api'
+import { DEFAULT_TRANSLATION, hashFor, LAST_KEY } from '../route'
+import { load as loadStored } from '../storage'
+
 // The word study index, built by scripts/build-word-study.mjs into public/word-study/ and
 // served as static files. Everything is loaded on demand and kept for the session.
 
@@ -130,3 +134,12 @@ export function occurrencesOf(strongs: string, entry: WordEntry, renderings?: nu
 export const formatCount = (n: number) => n.toLocaleString('en-US')
 
 export const LANGUAGE_NAMES = { h: 'Hebrew', a: 'Aramaic', g: 'Greek' } as const
+
+export const verseKey = (o: { book: number; chapter: number; verse: number }) => o.book * 1_000_000 + o.chapter * 1000 + o.verse
+export const byPosition = (a: Occurrence, b: Occurrence) => a.book - b.book || a.chapter - b.chapter || a.verse - b.verse
+
+/** A link to a verse (or chapter) in the reader, in the translation last read in. */
+export function verseHash(meta: Meta, o: { book: number; chapter: number; verse?: number }) {
+  const translationId = loadStored<ChapterRef | null>(LAST_KEY, null)?.translationId ?? DEFAULT_TRANSLATION
+  return hashFor({ translationId, book: meta.books[o.book].id, chapter: o.chapter, verse: o.verse })
+}

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.7.0
+
+- Word study is now a dashboard: an overview that fits on one screen, with collapsible cards.
+  - *Where it's used* is a heatmap you drill into: both testaments and their sections at once (each previewing its books), then the books of a section (each previewing its chapters), then a book's chapters. Counts or per 1,000 words.
+  - Selecting a part of the Bible, an English rendering, a word it's found together with, or (for English words) a Hebrew or Greek word narrows everything else on the page, and shows up as a filter you can clear.
+  - A verse opens in place: the verses around it, its Hebrew or Greek words (each a link to its own study page), and links to read it in the reader or see every occurrence in that book.
+- "Found together with" now also counts Hebrew words with prefixes such as "and" or "to", which were left out before (for *chesed*: *emet*, truth, is now the strongest).
+- Lexicon links go to Blue Letter Bible (the STEP Bible links didn't find the word).
+- The reader's header has a labelled "Study" button (just the icon on narrow phones).
+
 ## 1.6.0
 
 - Word study (the search button in the header): search an English word to see which Hebrew and Greek words it translates, or a Hebrew or Greek word (by transliteration, such as "chesed", or Strong's number, such as G26) to see:
