@@ -16,6 +16,7 @@ import {
   type WordEntry,
 } from './data'
 import { Explorer } from './explorer'
+import { LexiconCard } from './lexicon'
 import { inScope, scopeLabel, type Mode, type Scope } from './scope'
 import { Card, FilterChip, Folded, ModeToggle, RankedList, Stats } from './ui'
 import { VerseList } from './verses'
@@ -27,13 +28,6 @@ import { VerseList } from './verses'
 /** Categorical colours for an English word's original words, in fixed order; the rest are "Other". */
 const SERIES_COLORS = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)', 'var(--series-4)', 'var(--series-5)']
 const OTHER_COLOR = 'var(--series-other)'
-
-const blueLetterBible = (strongs: string) => {
-  const n = Number(strongs.slice(1))
-  return strongs[0] === 'H'
-    ? `https://www.blueletterbible.org/lexicon/h${n}/kjv/wlc/0-1/`
-    : `https://www.blueletterbible.org/lexicon/g${n}/kjv/tr/0-1/`
-}
 
 const verseCount = (os: Occurrence[]) => new Set(os.map(verseKey)).size
 
@@ -123,13 +117,11 @@ function WordDashboard({ strongs, meta, names, word }: {
             <span className="ws-lemma big" lang={lang === 'g' ? 'grc' : 'he'}>{lemma}</span> {translit}
           </h1>
           <p className="ws-gloss">{gloss}</p>
-          {word.definition && <p className="ws-definition">{word.definition}</p>}
-          <a className="link" href={blueLetterBible(strongs)} target="_blank" rel="noreferrer">
-            Lexicon on Blue Letter Bible
-          </a>
         </div>
         <Stats items={[[count, 'times'], [verseCount(all), 'verses'], [new Set(all.map((o) => o.book)).size, 'books']]} />
       </header>
+
+      <LexiconCard strongs={strongs} meta={meta} names={names} />
 
       <div className="ws-dash">
         <Card id="where" title="Where it's used" actions={<ModeToggle mode={mode} onChange={setMode} />} className="ws-main-card">

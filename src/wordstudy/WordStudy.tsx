@@ -38,7 +38,7 @@ export default function WordStudy({ route }: { route: StudyRoute }) {
         <footer className="attribution ws-credit">
           Word data from the Berean Standard Bible interlinear (public domain). Definitions from the{' '}
           <a href="https://github.com/STEPBible/STEPBible-Data" target="_blank" rel="noreferrer">STEPBible</a> brief lexicons
-          (Tyndale House, CC BY 4.0).
+          (Tyndale House, CC BY 4.0) and Strong's dictionaries (public domain).
         </footer>
       </main>
     </div>

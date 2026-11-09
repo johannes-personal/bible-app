@@ -16,13 +16,32 @@ export interface Meta {
 export type NameEntry = [string, string, string, number, 'h' | 'a' | 'g']
 
 export interface WordEntry {
-  definition: string
   /** English renderings in the BSB and how often each is used. */
   renderings: [string, number][]
   /** Flat pairs: verse code (see `decodeVerse`), rendering index (-1: no English word of its own). */
   occurrences: number[]
   /** Words most often found in the same verses: [Strong's number, shared verses, strength]. */
   related: [string, number, number][]
+}
+
+/**
+ * A word's lexicon entry. Text fields use a small markup the app renders: <b>, <i>,
+ * [[r:MAT.9.37|Mat 9:37]] for a verse and [[w:H2616]] for another word.
+ */
+export interface LexiconEntry {
+  partOfSpeech: string
+  pronunciation: string
+  /** Dictionary forms (Greek), e.g. "ἀγάπη, -ης, ἡ". */
+  forms: string
+  /** Where the word comes from, from Strong's, e.g. "from [[w:H2616]]". */
+  root: string
+  /** Strong's definition. */
+  strongs: string
+  /** How the KJV translates it, from Strong's. */
+  kjv: string
+  /** STEPBible senses: [depth, label ("1a", "(b)"), text]. */
+  senses: [number, string, string][]
+  notes: string[]
 }
 
 export interface EnglishEntry {
@@ -48,6 +67,11 @@ function load<T>(file: string): Promise<T> {
 }
 
 export const loadMeta = () => load<Meta>('meta.json')
+
+export async function loadLexicon(strongs: string): Promise<LexiconEntry | null> {
+  const bucket = await load<Record<string, LexiconEntry>>(`l/${strongs.slice(0, 3)}.json`)
+  return bucket[strongs] ?? null
+}
 export const loadNames = () => load<Record<string, NameEntry>>('names.json')
 
 export async function loadWord(strongs: string): Promise<WordEntry | null> {

@@ -191,13 +191,6 @@
   font-size: 18px;
 }
 
-.ws-definition {
-  margin: 8px 0;
-  max-width: 68ch;
-  color: var(--muted);
-  font-size: 15px;
-}
-
 /* One hero number, then supporting figures. */
 .ws-stats {
   display: flex;
@@ -803,4 +796,116 @@ a.ws-ranked-label:hover {
 
 .ws-loading {
   margin-top: 32px;
+}
+
+/* Lexicon: facts beside the numbered senses. */
+
+.ws-dash {
+  margin-top: 16px;
+}
+
+.ws-lex {
+  display: grid;
+  gap: 16px 32px;
+  margin-top: 8px;
+}
+
+@media (min-width: 900px) {
+  .ws-lex {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  }
+}
+
+.ws-lex-facts {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  align-content: start;
+}
+
+.ws-lex-facts div {
+  display: grid;
+  grid-template-columns: 9.5em minmax(0, 1fr);
+  gap: 12px;
+}
+
+.ws-lex-facts dt {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  padding-top: 1px;
+}
+
+.ws-lex-facts dd {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.ws-lex-facts a,
+.ws-lex-senses a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.ws-lex-facts a:hover,
+.ws-lex-senses a:hover {
+  text-decoration: underline;
+}
+
+.ws-lex-senses h3 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ws-lex-senses ol {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.ws-lex-senses li {
+  display: flex;
+  gap: 8px;
+}
+
+.ws-sense-label {
+  flex: none;
+  min-width: 1.8em;
+  color: var(--muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-lex-source {
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+
+@media (max-width: 480px) {
+  .ws-lex-facts div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+/* Verse references in definitions recede, so the meanings (in bold) stand out. */
+.ws-lex a.ws-ref-link {
+  color: var(--muted);
+  font-size: 0.9em;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--muted) 40%, transparent);
+  text-underline-offset: 2px;
+}
+
+.ws-lex a.ws-ref-link:hover {
+  color: var(--accent);
 }
