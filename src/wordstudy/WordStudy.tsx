@@ -2,9 +2,10 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { ChapterRef } from '../api'
 import { Icon } from '../components/Icon'
 import { useAsync } from '../hooks'
-import { goTo, hashFor, LAST_KEY, normalizeStrongs, parseStudyHash, studyHash, takeReplacedHash, type StudyRoute } from '../route'
+import { goTo, hashFor, LAST_KEY, normalizeStrongs, parseHash, parseStudyHash, studyHash, takeReplacedHash, type StudyRoute } from '../route'
 import { useSettings } from '../settings'
 import { load as loadStored } from '../storage'
+import { clearStudyReturn, saveStudyReturn } from '../studyReturn'
 import { EnglishPage, WordPage } from './dashboards'
 import { fold, formatCount, LANGUAGE_NAMES, loadNames, suggestEnglish, suggestOriginal, type NameEntry } from './data'
 import './wordstudy.css'
@@ -20,6 +21,7 @@ export default function WordStudy({ route }: { route: StudyRoute }) {
   }, [route])
   const last = loadStored<ChapterRef | null>(LAST_KEY, null)
   const backHash = last ? hashFor({ translationId: last.translationId, book: last.book, chapter: last.chapter }) : '#/'
+  useReturnFromReader(route)
   const compact = useTitleScrolledAway(route)
   const [searching, setSearching] = useState(false)
   useEffect(() => {
@@ -31,7 +33,7 @@ export default function WordStudy({ route }: { route: StudyRoute }) {
     <div className="ws">
       <header className={`app-header ws-header${compact ? ' compact' : ''}${searching ? ' searching' : ''}`}>
         <div className="header-inner">
-          <a className="icon-button" href={backHash} aria-label="Back to reading">
+          <a className="icon-button" href={backHash} aria-label="Back to reading" data-no-return>
             <Icon name="back" />
           </a>
           {compact && <CurrentWord route={route} />}
@@ -66,6 +68,38 @@ interface Suggestion {
   hash: string
   label: ReactNode
   hint: string
+}
+
+/**
+ * Following a link from a word's page into the reader remembers the word, so the reader can
+ * mark it in that chapter and lead back here. The back-to-reading button doesn't.
+ */
+function useReturnFromReader(route: StudyRoute) {
+  const { data: names } = useAsync('ws-names', loadNames)
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const link = (e.target as Element).closest?.<HTMLAnchorElement>('a[href^="#/"]')
+      if (!link) return
+      if (link.hasAttribute('data-no-return')) return clearStudyReturn()
+      const target = parseHash(link.getAttribute('href') ?? '')
+      if (!target || route.kind === 'home') return
+      const name = route.kind === 'word' ? names?.[route.strongs] : undefined
+      saveStudyReturn({
+        hash: location.hash,
+        label:
+          route.kind === 'english'
+            ? { text: route.word, gloss: 'English' }
+            : name
+              ? { original: name[0], lang: name[4] === 'g' ? 'grc' : 'he', text: name[1], gloss: name[2] }
+              : { text: route.strongs },
+        word: route.kind === 'word' ? { kind: 'word', strongs: route.strongs } : { kind: 'english', word: route.word },
+        book: target.book,
+        chapter: target.chapter,
+      })
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [route, names])
 }
 
 /**

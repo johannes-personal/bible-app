@@ -1235,3 +1235,142 @@ button:disabled {
 .attribution .credit {
   margin: 6px 0 0;
 }
+
+/* ---------- Original words of a verse ---------- */
+
+/* Verse numbers open the verse's Hebrew or Greek words; so does pressing and holding a verse. */
+.vnum-button {
+  padding: 4px 3px;
+  margin: -4px -3px;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.vnum-button:hover {
+  color: var(--accent);
+}
+
+.vnum-button:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.reader .verse {
+  -webkit-touch-callout: none; /* the long press is ours */
+}
+
+.verse-words .ws-words {
+  margin-top: 8px;
+}
+
+.vw-note {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.vw-source {
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+
+/* ---------- Arriving from word study ---------- */
+
+.verse.studied,
+.verse.studied .line {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 8%, transparent);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  border-radius: 2px;
+}
+
+mark.study-word {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.study-bar {
+  position: sticky;
+  top: calc(var(--header-h) + 8px);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 42px;
+  margin: 8px 0 4px;
+  padding: 0 2px 0 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  font-family: var(--sans);
+  font-size: 15px;
+  animation: fade 0.15s ease-out;
+}
+
+.study-bar-back {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.study-bar-back > .icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+
+.study-bar-back:hover > .icon {
+  color: var(--accent);
+}
+
+.study-bar-word {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.study-bar-original {
+  font-family: var(--serif);
+  font-size: 1.15em;
+}
+
+.study-bar-count {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 30px;
+  padding: 0 8px 0 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.study-bar-count .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.study-bar-close.icon-button {
+  flex: none;
+  width: 36px;
+  height: 36px;
+}
