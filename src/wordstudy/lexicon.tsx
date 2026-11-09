@@ -43,17 +43,16 @@ export function Markup({ text, meta, names }: { text: string; meta: Meta; names:
         ),
       )
     } else if (m[7]) {
+      // Only words with a study page are links.
       const name = names[m[7]]
       out.push(
-        <a key={key} href={studyHash({ kind: 'word', strongs: m[7] })}>
-          {name ? (
-            <>
-              <span className="ws-lemma" lang={name[4] === 'g' ? 'grc' : 'he'}>{name[0]}</span> {name[1]}
-            </>
-          ) : (
-            m[7]
-          )}
-        </a>,
+        name ? (
+          <a key={key} href={studyHash({ kind: 'word', strongs: m[7] })}>
+            <span className="ws-lemma" lang={name[4] === 'g' ? 'grc' : 'he'}>{name[0]}</span> {name[1]}
+          </a>
+        ) : (
+          m[7]
+        ),
       )
     }
     at = (m.index ?? 0) + m[0].length

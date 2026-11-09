@@ -4,11 +4,12 @@
 
 - Word study is now a dashboard: an overview that fits on one screen, with collapsible cards.
   - *Where it's used* is a heatmap you drill into: both testaments and their sections at once (each previewing its books), then the books of a section (each previewing its chapters), then a book's chapters. Counts or per 1,000 words.
-  - Selecting a part of the Bible, an English rendering, a word it's found together with, or (for English words) a Hebrew or Greek word narrows everything else on the page, and shows up as a filter you can clear.
+  - Selecting a part of the Bible, an English rendering, a word it's found together with, or (for English words) a Hebrew or Greek word narrows everything else on the page. The filters in effect show in a bar above the dashboard, which stays in view while scrolling, with the number of verses and a button to clear each (or all).
   - A verse opens in place: the verses around it, its Hebrew or Greek words (each a link to its own study page), and links to read it in the reader or see every occurrence in that book.
 - "Found together with" now also counts Hebrew words with prefixes such as "and" or "to", which were left out before (for *chesed*: *emet*, truth, is now the strongest).
 - A Hebrew or Greek word's page opens with a *Lexicon* card laid out like a dictionary page: pronunciation, part of speech, dictionary forms, root (a link to that word), Strong's definition and how the KJV translates it, beside the numbered meanings from the STEPBible lexicon, with verse references as links. Long entries fold. Pronunciation, roots and the Strong's and KJV lines come from Strong's dictionaries (public domain).
 - A link to the word on Blue Letter Bible (the STEP Bible links didn't find the word).
+- Every word in Strong's dictionaries has a page, including the 422 the BSB's Hebrew and Greek texts don't use (from other manuscripts, or tagged under a related word); those show their lexicon entry. Links between words in the lexicon all lead somewhere, and four of Strong's Greek entries that point to Hebrew words (such as *agapaō*'s "compare H5689") now link to the Hebrew word.
 - The reader's header has a labelled "Study" button (just the icon on narrow phones).
 
 ## 1.6.0

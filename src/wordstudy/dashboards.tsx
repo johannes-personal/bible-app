@@ -71,9 +71,12 @@ export function WordPage({ strongs }: { strongs: string }) {
   if (error) return <p className="message">{error.message}</p>
   if (!data) return <Loading />
   const [meta, names, word] = data
-  if (!word || !names[strongs]) return <NotFound what={strongs} />
-  return <WordDashboard strongs={strongs} meta={meta} names={names} word={word} />
+  if (!names[strongs]) return <NotFound what={strongs} />
+  return <WordDashboard strongs={strongs} meta={meta} names={names} word={word ?? UNUSED} />
 }
+
+/** A dictionary word the BSB's tagging never uses: it still has a lexicon entry. */
+const UNUSED: WordEntry = { renderings: [], occurrences: [], related: [] }
 
 function WordDashboard({ strongs, meta, names, word }: {
   strongs: string
@@ -123,72 +126,17 @@ function WordDashboard({ strongs, meta, names, word }: {
 
       <LexiconCard strongs={strongs} meta={meta} names={names} />
 
-      <div className="ws-dash">
-        <Card id="where" title="Where it's used" actions={<ModeToggle mode={mode} onChange={setMode} />} className="ws-main-card">
-          <Explorer meta={meta} occurrences={filtered} mode={mode} scope={scope} onScope={setScope} />
-        </Card>
-        <div className="ws-side">
-          <Card
-            id="renderings"
-            title="How it's translated"
-            subtitle={`In ${scopeLabel(meta, scope)}. Select one to see where the BSB uses it.`}
-          >
-            <Folded
-              items={renderings}
-              limit={6}
-              render={(items) => (
-                <RankedList
-                  items={items.map((r) => ({
-                    key: String(r.i),
-                    label: r.label,
-                    value: r.value,
-                    active: rendering === r.i,
-                    selectLabel: `Show where it's translated “${r.label}”`,
-                    onSelect: () => setRendering(rendering === r.i ? null : r.i),
-                  }))}
-                />
-              )}
-            />
-            {untranslated > 0 && (
-              <p className="muted ws-note">
-                {formatCount(untranslated)} more without an English word of its own (part of a phrase, or grammar).
-              </p>
-            )}
-          </Card>
-          {word.related.length > 0 && (
-            <Card
-              id="together"
-              title="Found together with"
-              subtitle="Words in the same verses more often than chance, strongest first. Select one to see the verses with both."
-            >
-              <Folded
-                items={word.related.filter(([s]) => names[s])}
-                limit={6}
-                render={(items) => (
-                  <RankedList
-                    unit="verses"
-                    items={items.map(([s, shared]) => ({
-                      key: s,
-                      href: studyHash({ kind: 'word', strongs: s }),
-                      label: <OriginalLabel name={names[s]} />,
-                      value: shared,
-                      active: together?.strongs === s,
-                      selectLabel: `Show the ${shared} verses with both`,
-                      onSelect: () => void showTogether(s),
-                    }))}
-                  />
-                )}
-              />
-            </Card>
-          )}
+      {all.length === 0 ? (
+        <div className="message ws-unused-word">
+          <p>The Berean Standard Bible doesn't use this word.</p>
+          <p className="muted">
+            It's in Strong's dictionary, but the BSB's Hebrew and Greek texts don't have it: it may come from other
+            manuscripts, or the BSB tags these verses with a closely related word.
+          </p>
         </div>
-      </div>
-
-      <Card
-        id="verses"
-        title="Verses"
-        subtitle={
-          <VerseFilters
+      ) : (
+        <>
+          <FilterBar
             count={verseCount(scoped)}
             scope={scope.book != null || scope.section != null ? scopeLabel(meta, scope) : null}
             onClearScope={() => setScope({})}
@@ -196,21 +144,85 @@ function WordDashboard({ strongs, meta, names, word }: {
               rendering != null && { label: `Translated “${word.renderings[rendering][0]}”`, clear: () => setRendering(null) },
               together && { label: `With ${names[together.strongs][1]}`, clear: () => setTogether(null) },
             ]}
+            hint="Select a part of the Bible, a translation or a word it's found with to narrow everything down."
           />
-        }
-      >
-        <VerseList
-          key={`${scope.section}-${scope.book}-${scope.chapter}-${rendering}-${together?.strongs}`}
-          meta={meta}
-          occurrences={scoped}
-          highlight={(o) => (o.rendering >= 0 ? [word.renderings[o.rendering][0]] : [])}
-          current={new Set([strongs])}
-          onScope={(s) => {
-            setScope(s)
-            document.querySelector('.ws-main-card')?.scrollIntoView({ behavior: 'smooth' })
-          }}
-        />
-      </Card>
+
+          <div className="ws-dash">
+            <Card id="where" title="Where it's used" actions={<ModeToggle mode={mode} onChange={setMode} />} className="ws-main-card">
+              <Explorer meta={meta} occurrences={filtered} mode={mode} scope={scope} onScope={setScope} />
+            </Card>
+            <div className="ws-side">
+              <Card
+                id="renderings"
+                title="How it's translated"
+                subtitle={`In ${scopeLabel(meta, scope)}. Select one to see where the BSB uses it.`}
+              >
+                <Folded
+                  items={renderings}
+                  limit={6}
+                  render={(items) => (
+                    <RankedList
+                      items={items.map((r) => ({
+                        key: String(r.i),
+                        label: r.label,
+                        value: r.value,
+                        active: rendering === r.i,
+                        selectLabel: `Show where it's translated “${r.label}”`,
+                        onSelect: () => setRendering(rendering === r.i ? null : r.i),
+                      }))}
+                    />
+                  )}
+                />
+                {untranslated > 0 && (
+                  <p className="muted ws-note">
+                    {formatCount(untranslated)} more without an English word of its own (part of a phrase, or grammar).
+                  </p>
+                )}
+              </Card>
+              {word.related.length > 0 && (
+                <Card
+                  id="together"
+                  title="Found together with"
+                  subtitle="Words in the same verses more often than chance, strongest first. Select one to see the verses with both."
+                >
+                  <Folded
+                    items={word.related.filter(([s]) => names[s])}
+                    limit={6}
+                    render={(items) => (
+                      <RankedList
+                        unit="verses"
+                        items={items.map(([s, shared]) => ({
+                          key: s,
+                          href: studyHash({ kind: 'word', strongs: s }),
+                          label: <OriginalLabel name={names[s]} />,
+                          value: shared,
+                          active: together?.strongs === s,
+                          selectLabel: `Show the ${shared} verses with both`,
+                          onSelect: () => void showTogether(s),
+                        }))}
+                      />
+                    )}
+                  />
+                </Card>
+              )}
+            </div>
+          </div>
+
+          <Card id="verses" title="Verses" subtitle={versesLabel(verseCount(scoped))}>
+            <VerseList
+              key={`${scope.section}-${scope.book}-${scope.chapter}-${rendering}-${together?.strongs}`}
+              meta={meta}
+              occurrences={scoped}
+              highlight={(o) => (o.rendering >= 0 ? [word.renderings[o.rendering][0]] : [])}
+              current={new Set([strongs])}
+              onScope={(s) => {
+                setScope(s)
+                document.querySelector('.ws-filterbar')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            />
+          </Card>
+        </>
+      )}
     </article>
   )
 }
@@ -277,6 +289,14 @@ function EnglishDashboard({ meta, names, english, words }: {
         <Stats items={[[all.length, 'times'], [verseCount(all), 'verses'], [perWord.length, 'Hebrew and Greek words']]} />
       </header>
 
+      <FilterBar
+        count={verseCount(scoped)}
+        scope={scope.book != null || scope.section != null ? scopeLabel(meta, scope) : null}
+        onClearScope={() => setScope({})}
+        chips={[original ? { label: `From ${names[original][1]}`, clear: () => setOriginal(null) } : null]}
+        hint="Select a part of the Bible or a Hebrew or Greek word to narrow everything down."
+      />
+
       <div className="ws-dash">
         <Card id="where" title="Where it's used" actions={<ModeToggle mode={mode} onChange={setMode} />} className="ws-main-card">
           <Explorer
@@ -317,18 +337,7 @@ function EnglishDashboard({ meta, names, english, words }: {
         </div>
       </div>
 
-      <Card
-        id="verses"
-        title="Verses"
-        subtitle={
-          <VerseFilters
-            count={verseCount(scoped)}
-            scope={scope.book != null || scope.section != null ? scopeLabel(meta, scope) : null}
-            onClearScope={() => setScope({})}
-            chips={[original ? { label: `From ${names[original][1]}`, clear: () => setOriginal(null) } : null]}
-          />
-        }
-      >
+      <Card id="verses" title="Verses" subtitle={versesLabel(verseCount(scoped))}>
         <VerseList
           key={`${scope.section}-${scope.book}-${scope.chapter}-${original}`}
           meta={meta}
@@ -338,7 +347,7 @@ function EnglishDashboard({ meta, names, english, words }: {
           tag={(o) => (names[o.strongs] ? <a href={studyHash({ kind: 'word', strongs: o.strongs })}>{names[o.strongs][1]}</a> : null)}
           onScope={(s) => {
             setScope(s)
-            document.querySelector('.ws-main-card')?.scrollIntoView({ behavior: 'smooth' })
+            document.querySelector('.ws-filterbar')?.scrollIntoView({ behavior: 'smooth' })
           }}
         />
       </Card>
@@ -346,19 +355,45 @@ function EnglishDashboard({ meta, names, english, words }: {
   )
 }
 
-function VerseFilters({ count, scope, onClearScope, chips }: {
+const versesLabel = (n: number) => `${formatCount(n)} ${n === 1 ? 'verse' : 'verses'}`
+
+/**
+ * The filters in effect, above the dashboard and kept in view while scrolling, since they
+ * narrow every card on the page.
+ */
+function FilterBar({ count, scope, onClearScope, chips, hint }: {
   count: number
   scope: string | null
   onClearScope: () => void
   chips: (false | null | { label: string; clear: () => void })[]
+  hint: string
 }) {
+  const active = chips.filter((c): c is { label: string; clear: () => void } => !!c)
+  const any = !!scope || active.length > 0
   return (
-    <div className="ws-filters">
-      <span>
-        {formatCount(count)} {count === 1 ? 'verse' : 'verses'}
-      </span>
-      {scope && <FilterChip onClear={onClearScope}>In {scope}</FilterChip>}
-      {chips.map((c) => c && <FilterChip key={c.label} onClear={c.clear}>{c.label}</FilterChip>)}
+    <div className={`ws-filterbar${any ? ' active' : ''}`} role="status">
+      <span className="ws-filterbar-count">{versesLabel(count)}</span>
+      {any ? (
+        <>
+          {scope && <FilterChip onClear={onClearScope}>In {scope}</FilterChip>}
+          {active.map((c) => (
+            <FilterChip key={c.label} onClear={c.clear}>{c.label}</FilterChip>
+          ))}
+          {(scope ? 1 : 0) + active.length > 1 && (
+            <button
+              className="link ws-clear-all"
+              onClick={() => {
+                onClearScope()
+                active.forEach((c) => c.clear())
+              }}
+            >
+              Clear all
+            </button>
+          )}
+        </>
+      ) : (
+        <span className="muted ws-filterbar-hint">{hint}</span>
+      )}
     </div>
   )
 }

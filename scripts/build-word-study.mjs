@@ -290,6 +290,7 @@ function parseLexicon(text) {
       // "to speak: speak" -> "to speak"
       gloss: stripHtml(cols[6]).split(':')[0].trim(),
       pos: partOfSpeech(cols[5].trim()),
+      aramaic: cols[5].trim().startsWith('A:'),
       ...parseSenses(cols[7], lemma),
     })
   }
@@ -304,10 +305,16 @@ function parseStrongsGreek(xml) {
     const field = (tag) => new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`).exec(body)?.[1] ?? ''
     const words = (s) =>
       s
-        .replace(/<strongsref language="GREEK" strongs="(\d+)"\/>/g, (_, n) => `[[w:G${String(Number(n)).padStart(4, '0')}]]`)
+        // A few references marked Greek point past the last Greek number (5624): they're Hebrew.
+        .replace(/<strongsref language="GREEK" strongs="(\d+)"\/>/g, (_, n) =>
+          Number(n) > 5624 ? `[[w:H${String(Number(n)).padStart(4, '0')}]]` : `[[w:G${String(Number(n)).padStart(4, '0')}]]`,
+        )
         .replace(/<strongsref language="HEBREW" strongs="(\d+)"\/>/g, (_, n) => `[[w:H${String(Number(n)).padStart(4, '0')}]]`)
         .replace(/<greek [^>]*unicode="([^"]*)"[^>]*\/>/g, '$1')
+    const head = /<greek [^>]*unicode="([^"]*)" translit="([^"]*)"/.exec(body)
     entries.set(`G${m[1].slice(-4)}`, {
+      lemma: head?.[1] ?? '',
+      translit: head?.[2] ?? '',
       pron: /<pronunciation strongs="([^"]*)"/.exec(body)?.[1] ?? '',
       root: tidy(words(field('strongs_derivation'))).replace(/[;,.]\s*$/, ''),
       definition: tidy(field('strongs_def')),
@@ -326,7 +333,11 @@ function parseStrongsHebrew(xml) {
       s
         .replace(/<w [^>]*src="(\d+)"[^>]*\/>/g, (_, n) => `[[w:H${String(Number(n)).padStart(4, '0')}]]`)
         .replace(/<w [^>]*lemma="([^"]*)"[^>]*\/>/g, '$1') // a form without its own number
+    const head = /<w [^>]*lemma="([^"]*)"[^>]*xlit="([^"]*)"/.exec(body)
     entries.set(`H${m[1].padStart(4, '0')}`, {
+      lemma: head?.[1] ?? '',
+      translit: head?.[2] ?? '',
+      aramaic: /xml:lang="arc"/.test(body),
       pron: /<w [^>]*POS="([^"]*)"/.exec(body)?.[1] ?? '',
       root: tidy(words(note('exegesis'))).replace(/[;,.]\s*$/, ''),
       definition: tidy(note('explanation').replace(/<\/?hi>/g, '')),
@@ -526,7 +537,20 @@ async function main() {
     const lex = lexicon.get(strongs)
     nameList[strongs] = [lex?.lemma ?? '', lex?.translit || commonForm(w), lex?.gloss ?? '', w.occurrences.length / 2, lang[w.language] ?? 'h']
   }
-  write('names.json', nameList)
+  // Dictionary words the BSB's tagging never uses (other manuscript readings, forms it tags under
+  // a related number, roots) still get a page with their lexicon entry, so links to them work.
+  // (Strong's own numbers only; STEPBible's extended ones past them are Septuagint vocabulary.)
+  const inStrongs = (n) => Number(n.slice(1)) <= (n[0] === 'G' ? 5624 : 8674)
+  const allNumbers = [...new Set([...lexicon.keys(), ...strongsDictionary.keys()])].filter(inStrongs).sort()
+  for (const strongs of allNumbers) {
+    if (nameList[strongs]) continue
+    const lex = lexicon.get(strongs)
+    const dict = strongsDictionary.get(strongs)
+    const gloss = lex?.gloss || (dict?.definition ?? '').replace(/<\/?[bi]>/g, '').split(/[;,(]/)[0].trim()
+    const language = strongs[0] === 'G' ? 'g' : lex?.aramaic || dict?.aramaic ? 'a' : 'h'
+    nameList[strongs] = [lex?.lemma || dict?.lemma || '', lex?.translit || dict?.translit || '', gloss, 0, language]
+  }
+  write('names.json', Object.fromEntries(Object.entries(nameList).sort(([a], [b]) => a.localeCompare(b))))
 
   const buckets = new Map()
   const lexBuckets = new Map()
@@ -538,7 +562,10 @@ async function main() {
       occurrences: w.occurrences,
       related: related.get(strongs) ?? [],
     }
-    // The lexicon entry, in its own files: only a word's own page needs it.
+  }
+  // The lexicon entries, in their own files (only a word's own page needs them), for every word.
+  for (const strongs of Object.keys(nameList)) {
+    const bucket = strongs.slice(0, 3)
     const lex = lexicon.get(strongs)
     const dict = strongsDictionary.get(strongs)
     if (!lexBuckets.has(bucket)) lexBuckets.set(bucket, {})

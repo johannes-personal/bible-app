@@ -801,7 +801,7 @@ a.ws-ranked-label:hover {
 /* Lexicon: facts beside the numbered senses. */
 
 .ws-dash {
-  margin-top: 16px;
+  margin-top: 8px;
 }
 
 .ws-lex {
@@ -908,4 +908,41 @@ a.ws-ranked-label:hover {
 
 .ws-lex a.ws-ref-link:hover {
   color: var(--accent);
+}
+
+/* The filters in effect: above the dashboard, kept in view under the header while scrolling. */
+.ws-filterbar {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-height: 48px;
+  margin: 16px -16px 0;
+  padding: 8px 16px;
+  background: var(--bg);
+}
+
+.ws-filterbar.active {
+  border-bottom: 1px solid var(--border);
+}
+
+.ws-filterbar-count {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+.ws-filterbar-hint {
+  font-size: 14px;
+}
+
+.ws-clear-all {
+  margin-left: 4px;
+  font-size: 14px;
+}
+
+.ws-unused-word {
+  margin-top: 16px;
 }
