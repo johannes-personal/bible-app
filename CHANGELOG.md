@@ -9,6 +9,7 @@
 - Moving between the languages:
   - Any word in a verse can be tapped to see the Hebrew or Greek word behind it (from the interlinear), with links to study the original or the English word.
   - *How it's translated* links each English word to its page.
+  - On English pages, the names in the *Where it's used* legend link to those Hebrew and Greek words' pages.
   - English pages have *Same words, other English*: other English words the BSB uses for the same Hebrew and Greek words (for "love": devotion, kindness, lover, beloved…), each with the original words they share.
   - A trail of the words studied recently, in either language, sits under the search box.
   - A word form ("loving") opens its base word's page ("love").

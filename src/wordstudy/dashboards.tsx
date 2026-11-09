@@ -272,7 +272,12 @@ function EnglishDashboard({ meta, names, english, words }: {
   const top = perWord.slice(0, SERIES_COLORS.length)
   const colorOf = (s: string) => SERIES_COLORS[top.indexOf(s)] ?? OTHER_COLOR
   const series = [
-    ...top.map((s, i) => ({ key: s, label: names[s][1], color: SERIES_COLORS[i] })),
+    ...top.map((s, i) => ({
+      key: s,
+      label: names[s][1],
+      color: SERIES_COLORS[i],
+      href: studyHash({ kind: 'word', strongs: s }),
+    })),
     ...(perWord.length > top.length ? [{ key: 'other', label: 'Other', color: OTHER_COLOR }] : []),
   ]
   const seriesOf = (o: Occurrence) => {

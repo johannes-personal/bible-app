@@ -10,6 +10,8 @@ export interface SeriesInfo {
   key: string
   label: string
   color: string
+  /** The word's own page, linked from the legend. */
+  href?: string
 }
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
@@ -188,7 +190,7 @@ export function Explorer({ meta, occurrences, mode, scope, onScope, series, seri
           {series.map((s) => (
             <li key={s.key}>
               <span className="ws-swatch" style={{ background: s.color }} />
-              {s.label}
+              {s.href ? <a href={s.href}>{s.label}</a> : s.label}
             </li>
           ))}
         </ul>
