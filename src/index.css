@@ -1728,3 +1728,38 @@ mark.study-word {
   margin: 4px 0 8px;
   font-size: 13px;
 }
+
+/* Book picker: a typed reference, and verses matching typed words. */
+.go-reference {
+  gap: 10px;
+  margin: 4px 0 8px;
+  background: var(--accent-soft);
+}
+
+.go-reference .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.found-verses .list-row-main {
+  gap: 2px;
+}
+
+.found-verse-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-family: var(--reader-font, var(--serif));
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--muted);
+  white-space: normal;
+}
+
+.found-verse-text mark {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-radius: 3px;
+}

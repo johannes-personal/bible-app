@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { referenceFinder, referenceLabel } from '../references'
+import { parseReference, referenceFinder, referenceLabel } from '../references'
 
 const find = (text: string, books = []) =>
   referenceFinder(books).find(text).map((r) => ({
@@ -50,5 +50,21 @@ describe('referenceFinder', () => {
     const books = [{ id: 'JHN', name: 'Johannesevangeliet', commonName: 'Johannes', order: 43, numberOfChapters: 21 }]
     expect(find('Johannes 3:16', books as never).map((r) => r.ref)).toEqual(['JHN 3:16'])
     expect(referenceLabel(referenceFinder().find('Joh 3:16-17')[0], books)).toBe('Johannesevangeliet 3:16–17')
+  })
+})
+
+describe('parseReference', () => {
+  const finder = referenceFinder()
+  it('reads references typed on their own', () => {
+    expect(parseReference('John 3:16', finder)).toEqual({ book: 'JHN', chapter: 3, verse: 16 })
+    expect(parseReference('jn 3', finder)).toEqual({ book: 'JHN', chapter: 3 })
+    expect(parseReference('1 cor 13:4-7', finder)).toEqual({ book: '1CO', chapter: 13, verse: 4 })
+    expect(parseReference('Psalm 23', finder)).toEqual({ book: 'PSA', chapter: 23 })
+    expect(parseReference('Ps. 23:1', finder)).toEqual({ book: 'PSA', chapter: 23, verse: 1 })
+  })
+  it('leaves other text alone', () => {
+    expect(parseReference('for God so loved', finder)).toBeNull()
+    expect(parseReference('John', finder)).toBeNull()
+    expect(parseReference('love 3', finder)).toBeNull()
   })
 })

@@ -22,7 +22,7 @@ import { LexiconCard } from './lexicon'
 import { inScope, scopeLabel, type Mode, type Scope } from './scope'
 import { Card, FilterChip, Folded, ModeToggle, RankedList, Stats } from './ui'
 import { VerseList } from './verses'
-import { findAllWords, findPhrase, formsOf, loadVerseText, parseQuery, type VerseText } from './phrase'
+import { bestMatches, findAllWords, findPhrase, formsOf, loadVerseText, parseQuery, type VerseText } from './phrase'
 
 // The two dashboards: one for a Hebrew or Greek word, one for an English word. Each has the
 // "Where it's used" explorer, lists that filter the verses, and the verses themselves. The
@@ -447,7 +447,9 @@ export function SearchPage({ query, mode }: { query: string; mode?: SearchMode }
   const { data, error } = useAsync(`ws-q-${query}`, async () => {
     const { words, quoted } = parseQuery(query)
     const [meta, names, verses, forms] = await Promise.all([loadMeta(), loadNames(), loadVerseText(), formsOf(words)])
-    return { meta, names, words, quoted, forms, phrase: findPhrase(verses, words), all: findAllWords(verses, forms) }
+    // "All the words": the closest matches first.
+    const all = bestMatches(findAllWords(verses, forms), words, forms)
+    return { meta, names, words, quoted, forms, phrase: findPhrase(verses, words), all }
   })
   if (error) return <p className="message">{error.message}</p>
   if (!data) return <Loading />
@@ -570,6 +572,30 @@ function SearchDashboard({ query, mode: chosen, meta, names, words, quoted, form
             hint="Select a part of the Bible, or a Hebrew or Greek word behind the phrase, to narrow everything down."
           />
 
+          <Card
+            id="search-verses"
+            title={mode === 'phrase' ? 'Verses' : 'Best matches'}
+            subtitle={
+              mode === 'phrase'
+                ? `${versesLabel(verseCount(scoped))} with the exact phrase, in Bible order.`
+                : `${versesLabel(verseCount(scoped))} with all the words, closest together first.`
+            }
+          >
+            <VerseList
+              key={`${mode}-${scope.section}-${scope.book}-${scope.chapter}-${original?.strongs}`}
+              meta={meta}
+              occurrences={scoped}
+              ordered={mode === 'words'}
+              pageSize={8}
+              highlight={() => marks}
+              current={new Set(behind?.flatMap((b) => b.originals.map((o) => o.strongs)) ?? [])}
+              onScope={(s) => {
+                setScope(s)
+                document.querySelector('.ws-filterbar')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            />
+          </Card>
+
           <div className="ws-dash">
             <Card id="where" title="Where it's used" actions={<ModeToggle mode={view} onChange={setView} />} className="ws-main-card">
               <Explorer meta={meta} occurrences={filtered} mode={view} scope={scope} onScope={setScope} />
@@ -611,19 +637,6 @@ function SearchDashboard({ query, mode: chosen, meta, names, words, quoted, form
             </div>
           </div>
 
-          <Card id="verses" title="Verses" subtitle={versesLabel(verseCount(scoped))}>
-            <VerseList
-              key={`${mode}-${scope.section}-${scope.book}-${scope.chapter}-${original?.strongs}`}
-              meta={meta}
-              occurrences={scoped}
-              highlight={() => marks}
-              current={new Set(behind?.flatMap((b) => b.originals.map((o) => o.strongs)) ?? [])}
-              onScope={(s) => {
-                setScope(s)
-                document.querySelector('.ws-filterbar')?.scrollIntoView({ behavior: 'smooth' })
-              }}
-            />
-          </Card>
         </>
       )}
     </article>

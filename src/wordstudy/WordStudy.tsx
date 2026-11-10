@@ -7,8 +7,9 @@ import { useSettings } from '../settings'
 import { load as loadStored } from '../storage'
 import { clearStudyReturn, saveStudyReturn } from '../studyReturn'
 import { EnglishPage, SearchPage, WordPage } from './dashboards'
-import { isPhrase } from './phrase'
-import { fold, formatCount, LANGUAGE_NAMES, loadNames, suggestEnglish, suggestOriginal, type NameEntry } from './data'
+import { bestMatches, findAllWords, findPhrase, formsOf, isPhrase, loadVerseText, parseQuery, snippet } from './phrase'
+import { splitMarked } from './highlight'
+import { decodeVerse, fold, formatCount, LANGUAGE_NAMES, loadMeta, loadNames, suggestEnglish, suggestOriginal, verseHash, type NameEntry } from './data'
 import './wordstudy.css'
 
 // Word study: search English words or Hebrew/Greek words, and see where and how they're used.
@@ -70,7 +71,12 @@ interface Suggestion {
   hash: string
   label: ReactNode
   hint: string
+  /** A verse: shown on two lines (reference, then the text around the match). */
+  verse?: boolean
 }
+
+/** How many verses to show among the suggestions. */
+const VERSE_SUGGESTIONS = 3
 
 /**
  * Following a link from a word's page into the reader remembers the word, so the reader can
@@ -211,25 +217,74 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
         }
       }
       const list = ranked.sort((a, b) => b.rank - a.rank).slice(0, 8).map((r) => r.s)
-      // Verses with the words: first for a phrase, last for a single word (names, places…).
-      if (q && !strongs) {
-        const verses: Suggestion = {
-          key: 'verses',
-          hash: studyHash({ kind: 'search', query: q }),
-          label: (
-            <span className="ws-verse-search">
-              <Icon name="search" /> Verses with “{q}”
-            </span>
-          ),
-          hint: 'BSB',
-        }
-        if (isPhrase(q)) list.unshift(verses)
-        else list.push(verses)
+      const allVerses = (count?: number): Suggestion => ({
+        key: 'verses',
+        hash: studyHash({ kind: 'search', query: q }),
+        label: (
+          <span className="ws-verse-search">
+            <Icon name="search" />{' '}
+            {count == null
+              ? `Verses with “${q}”`
+              : count === 0
+                ? `No verse has “${q}”`
+                : `All ${formatCount(count)} ${count === 1 ? 'verse' : 'verses'} with “${q}”`}
+          </span>
+        ),
+        hint: count == null ? 'BSB' : 'Study',
+      })
+      if (!q || strongs) {
+        if (live) setSuggestions(list)
+        return
       }
+      // A single word: its study pages first, then verses with it (names, places…).
+      if (!isPhrase(q)) {
+        if (live) {
+          setSuggestions([...list, allVerses()])
+          setActive(0)
+        }
+        return
+      }
+      // A phrase: show the way to its verses at once, then the best of them once the text is in.
       if (live) {
-        setSuggestions(list)
+        setSuggestions([allVerses(), ...list])
         setActive(0)
       }
+      const { words } = parseQuery(q)
+      const [meta, text, forms] = await Promise.all([loadMeta(), loadVerseText(), formsOf(words)])
+      if (!live) return
+      // The exact phrase when it's there (as the results page starts with); otherwise the verses
+      // with all the words, closest together first.
+      const exact = findPhrase(text, words)
+      const matching = exact.length ? exact : bestMatches(findAllWords(text, forms), words, forms)
+      const count = matching.length
+      const verses = matching.slice(0, VERSE_SUGGESTIONS).map((v): Suggestion => {
+        const o = decodeVerse(v.code)
+        return {
+          key: `v${v.code}`,
+          hash: verseHash(meta, o),
+          verse: true,
+          label: (
+            <>
+              <strong>
+                {meta.books[o.book].name} {o.chapter}:{o.verse}
+              </strong>
+              <span className="ws-suggestion-text">
+                {splitMarked(snippet(v.text, words), [words.join(' '), ...forms.flat()]).map((p, i) =>
+                  p.marked ? <mark key={i}>{p.text}</mark> : p.text,
+                )}
+              </span>
+            </>
+          ),
+          hint: '',
+        }
+      })
+      // A few matches: probably a verse being looked for, so the verses come first. Many: the
+      // way to all of them first, with the best few after it.
+      const few = count > 0 && count <= VERSE_SUGGESTIONS
+      setSuggestions(
+        count === 0 ? [allVerses(0), ...list] : few ? [...verses, allVerses(count), ...list] : [allVerses(count), ...verses, ...list],
+      )
+      setActive(0)
     }, 120)
     return () => {
       live = false
@@ -297,14 +352,20 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
             <li key={s.key} role="option" aria-selected={i === active}>
               <a
                 href={s.hash}
-                className={i === active ? 'active' : undefined}
+                className={[i === active && 'active', s.verse && 'ws-suggestion-verse'].filter(Boolean).join(' ') || undefined}
                 onPointerDown={(e) => {
                   e.preventDefault()
                   go(s.hash)
                 }}
               >
-                <span>{s.label}</span>
-                <span className="muted">{s.hint}</span>
+                {s.verse ? (
+                  s.label
+                ) : (
+                  <>
+                    <span>{s.label}</span>
+                    <span className="muted">{s.hint}</span>
+                  </>
+                )}
               </a>
             </li>
           ))}

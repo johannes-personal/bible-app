@@ -1241,3 +1241,32 @@ a.ws-trail-item:hover {
   height: 15px;
   color: var(--muted);
 }
+
+/* A verse among the suggestions: its reference, then the text around the match. */
+.ws-suggestions a.ws-suggestion-verse {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.ws-suggestion-verse strong {
+  font-size: 14px;
+}
+
+.ws-suggestion-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--muted);
+  white-space: normal;
+}
+
+.ws-suggestion-text mark {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-radius: 3px;
+}

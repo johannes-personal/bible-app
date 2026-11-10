@@ -14,7 +14,7 @@ import { OriginalWordList } from './originals'
 
 const PAGE = 20
 
-export function VerseList({ meta, occurrences, highlight, tag, current, onScope }: {
+export function VerseList({ meta, occurrences, highlight, tag, current, onScope, ordered, pageSize = PAGE }: {
   meta: Meta
   /** Already filtered; one entry per word occurrence. */
   occurrences: Occurrence[]
@@ -24,17 +24,21 @@ export function VerseList({ meta, occurrences, highlight, tag, current, onScope 
   /** Strong's numbers to mark among a verse's original words. */
   current: Set<string>
   onScope: (scope: Scope) => void
+  /** Keep the order given (e.g. best matches first) instead of Bible order. */
+  ordered?: boolean
+  /** Verses shown before "Show more". */
+  pageSize?: number
 }) {
-  const [shown, setShown] = useState(PAGE)
+  const [shown, setShown] = useState(pageSize)
   // One entry per verse, with every occurrence in it (a word can occur twice in a verse).
   const verses = useMemo(() => {
     const map = new Map<number, Occurrence[]>()
-    for (const o of [...occurrences].sort(byPosition)) {
+    for (const o of ordered ? occurrences : [...occurrences].sort(byPosition)) {
       const k = verseKey(o)
       map.set(k, [...(map.get(k) ?? []), o])
     }
     return [...map.values()]
-  }, [occurrences])
+  }, [occurrences, ordered])
 
   if (!verses.length) return <p className="muted">No verses match.</p>
   return (

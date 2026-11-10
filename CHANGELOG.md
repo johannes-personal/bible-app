@@ -3,8 +3,10 @@
 ## 1.11.0
 
 - Recorded audio Bibles are marked in the translation picker with a headphones symbol, and come first: first within each language, and in search results languages that have one come first too. A "With audio" filter (remembered) shows only those. For now that's the Berean Standard Bible and the Accessible Ancients Bible; Bible Brain's recordings join once its key works.
-- Word study searches verses by phrase. Type two or more words (or a word in quotes) and the first suggestion is "Verses with …"; for a single word it's the last one.
+- Find a verse by its wording, in the reader: the book picker's search now takes references ("jn 3:16", "1 cor 13:4-7", "Psalm 23") and words ("for God so loved"), listing the verses whose BSB wording matches, best first; Enter or a tap opens the verse in the translation being read.
+- Word study searches verses by phrase. Type two or more words (or a word in quotes) and the best-matching verses appear right among the suggestions, with a reference and the text around the match: "for God so loved" shows John 3:16, and Enter opens it. When many verses match ("love one another", 13), "All 13 verses" comes first, then the best three. A misremembered quote ("god so love the world") still finds the closest verses. For a single word, "Verses with …" is the last suggestion.
   - The results page shows how many verses have the exact phrase and how many have all the words in any order (also in other forms: "love" finds "loved"), and starts on the exact phrase when there is one.
+  - The verses come first ("Best matches": exact phrase, or all the words closest together and in order first), then the word breakdown.
   - Like the word pages: where it's used (the drill-down heatmap), the verses with the phrase marked, and filters that narrow both.
   - "Hebrew and Greek behind it": for each word of the phrase, the original words the BSB translates it with in those verses, such as ἀγαπάω *agapaō* behind "love" in 11 of the 13 verses with "love one another". Select one to see just those verses.
   - Opening a verse in the reader marks the verses with the phrase there, and the bar leads back to the search.

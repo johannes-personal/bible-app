@@ -88,3 +88,55 @@ export async function formsOf(words: string[]): Promise<string[][]> {
     }),
   )
 }
+
+/**
+ * How well a verse matches: the exact phrase best; otherwise all the words, the closer
+ * together the better, and better still in the order searched for. 0 if a word is missing.
+ */
+export function relevance(v: VerseText, words: string[], forms: string[][]): number {
+  if (words.length && v.words.includes(` ${words.join(' ')} `)) return 1000
+  const tokens = v.words.trim().split(' ')
+  const sets = forms.map((f) => new Set(f))
+  const hits: [number, number][] = [] // [position, which word]
+  tokens.forEach((t, i) => sets.forEach((s, k) => s.has(t) && hits.push([i, k])))
+  // The shortest stretch of the verse with every word in it.
+  const need = sets.length
+  const counts = new Array<number>(need).fill(0)
+  let have = 0
+  let best: [number, number] | null = null
+  for (let lo = 0, hi = 0; hi < hits.length; hi++) {
+    if (counts[hits[hi][1]]++ === 0) have++
+    while (have === need) {
+      const span: [number, number] = [hits[lo][0], hits[hi][0]]
+      if (!best || span[1] - span[0] < best[1] - best[0]) best = span
+      if (--counts[hits[lo][1]] === 0) have--
+      lo++
+    }
+  }
+  if (!best) return 0
+  // In order: each word first appears (within the stretch) after the one before it.
+  const firsts = sets.map((_, k) => hits.find(([p, w]) => w === k && p >= best[0] && p <= best[1])?.[0] ?? 0)
+  const inOrder = firsts.every((p, k) => k === 0 || p > firsts[k - 1])
+  return 500 - Math.min(best[1] - best[0], 400) + (inOrder ? 50 : 0)
+}
+
+/** The verses that match best, best first (in Bible order when equally good). */
+export function bestMatches(verses: VerseText[], words: string[], forms: string[][], limit = Infinity): VerseText[] {
+  return verses
+    .map((v) => ({ v, score: relevance(v, words, forms) }))
+    .filter((r) => r.score > 0)
+    .sort((a, b) => b.score - a.score || a.v.code - b.v.code)
+    .slice(0, limit)
+    .map((r) => r.v)
+}
+
+/** The part of a long verse around its first matching word, for a one- or two-line preview. */
+export function snippet(text: string, words: string[], max = 120): string {
+  if (text.length <= max) return text
+  const lower = text.toLowerCase().replace(/[’‘]/g, "'")
+  const at = words.map((w) => lower.search(new RegExp(`(?<![\\p{L}])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'u'))).find((i) => i >= 0) ?? 0
+  let start = Math.max(0, at - 30)
+  if (start > 0) start = text.indexOf(' ', start) + 1 || start
+  const end = Math.min(text.length, start + max)
+  return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`
+}

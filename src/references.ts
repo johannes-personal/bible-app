@@ -98,6 +98,8 @@ const namePattern = (name: string) => escape(name.trim()).replace(/\\?\s+/g, '\\
 export interface ReferenceFinder {
   /** `currentBook` resolves references like "(see 12:25)" that leave out the book. */
   find(text: string, currentBook?: string): Reference[]
+  /** The book a name or abbreviation stands for ("Jn", "1 Kor", "Psalms"), if any. */
+  book(name: string): string | undefined
 }
 
 // Words after which a bare "12:25" points into the current book.
@@ -129,6 +131,7 @@ export function referenceFinder(books: Book[] = []): ReferenceFinder {
   const lookup = (name: string) => byName.get(keyOf(name))?.id
 
   return {
+    book: lookup,
     find(text, currentBook) {
       const refs: Reference[] = []
       let lastBook: string | undefined
@@ -164,4 +167,19 @@ export function referenceLabel(ref: VerseRange, books: Book[] = []): string {
   const name = books.find((b) => b.id === ref.book)?.name ?? NAMES[ref.book]?.[0] ?? ref.book
   const verses = ref.verseEnd > ref.verseStart ? `${ref.verseStart}–${ref.verseEnd}` : `${ref.verseStart}`
   return `${name} ${ref.chapter}:${verses}`
+}
+
+/**
+ * A reference typed on its own, such as "John 3:16", "jn 3", "1 cor 13:4-7" or "Psalm 23":
+ * the book, chapter and (when given) verse. Null if it isn't one.
+ */
+export function parseReference(
+  text: string,
+  finder: ReferenceFinder,
+): { book: string; chapter: number; verse?: number } | null {
+  const m = /^\s*(.*?\p{L}.*?)\.?\s*(\d{1,3})(?:\s*[:.,]\s*(\d{1,3})(?:\s*[-–—]\s*\d{1,3})?)?\s*$/u.exec(text)
+  if (!m) return null
+  const book = finder.book(m[1])
+  if (!book) return null
+  return m[3] ? { book, chapter: Number(m[2]), verse: Number(m[3]) } : { book, chapter: Number(m[2]) }
 }
