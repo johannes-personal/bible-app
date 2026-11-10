@@ -109,9 +109,17 @@ export function useRoute(): ChapterRef {
   return ref
 }
 
-// Word study pages: #/study, #/study/G0026 (a Hebrew or Greek word) and #/study/en/love.
+// Word study pages: #/study, #/study/G0026 (a Hebrew or Greek word), #/study/en/love and
+// verses found by a phrase, #/study/q/love%20one%20another (optionally /phrase or /words, the
+// way the words are matched; otherwise the page picks).
 
-export type StudyRoute = { kind: 'home' } | { kind: 'word'; strongs: string } | { kind: 'english'; word: string }
+export type SearchMode = 'phrase' | 'words'
+
+export type StudyRoute =
+  | { kind: 'home' }
+  | { kind: 'word'; strongs: string }
+  | { kind: 'english'; word: string }
+  | { kind: 'search'; query: string; mode?: SearchMode }
 
 /** "g26" -> "G0026"; null if it isn't a Strong's number. */
 export function normalizeStrongs(s: string): string | null {
@@ -122,6 +130,11 @@ export function normalizeStrongs(s: string): string | null {
 export function parseStudyHash(hash: string): StudyRoute | null {
   const m = /^#\/study(?:\/(.*))?$/.exec(hash)
   if (!m) return null
+  const search = /^q\/([^/]+)(?:\/(phrase|words))?\/?$/.exec(m[1] ?? '')
+  if (search) {
+    const query = decodeURIComponent(search[1]).trim()
+    if (query) return search[2] ? { kind: 'search', query, mode: search[2] as SearchMode } : { kind: 'search', query }
+  }
   const rest = decodeURIComponent(m[1] ?? '').replace(/\/$/, '')
   if (!rest) return { kind: 'home' }
   const english = /^en\/(.+)$/.exec(rest)
@@ -133,6 +146,7 @@ export function parseStudyHash(hash: string): StudyRoute | null {
 export function studyHash(route: StudyRoute): string {
   if (route.kind === 'word') return `#/study/${route.strongs}`
   if (route.kind === 'english') return `#/study/en/${encodeURIComponent(route.word)}`
+  if (route.kind === 'search') return `#/study/q/${encodeURIComponent(route.query)}${route.mode ? `/${route.mode}` : ''}`
   return '#/study'
 }
 

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAsync } from '../hooks'
-import { replaceHash, studyHash } from '../route'
+import { replaceHash, studyHash, type SearchMode } from '../route'
 import {
+  decodeVerse,
   formatCount,
   LANGUAGE_NAMES,
   loadEnglish,
@@ -21,6 +22,7 @@ import { LexiconCard } from './lexicon'
 import { inScope, scopeLabel, type Mode, type Scope } from './scope'
 import { Card, FilterChip, Folded, ModeToggle, RankedList, Stats } from './ui'
 import { VerseList } from './verses'
+import { findAllWords, findPhrase, formsOf, loadVerseText, parseQuery, type VerseText } from './phrase'
 
 // The two dashboards: one for a Hebrew or Greek word, one for an English word. Each has the
 // "Where it's used" explorer, lists that filter the verses, and the verses themselves. The
@@ -435,5 +437,195 @@ function FilterBar({ count, scope, onClearScope, chips, hint }: {
         <span className="muted ws-filterbar-hint">{hint}</span>
       )}
     </div>
+  )
+}
+
+// -----------------------------------------------------------------------------------------------
+// Verses found by a phrase
+
+export function SearchPage({ query, mode }: { query: string; mode?: SearchMode }) {
+  const { data, error } = useAsync(`ws-q-${query}`, async () => {
+    const { words, quoted } = parseQuery(query)
+    const [meta, names, verses, forms] = await Promise.all([loadMeta(), loadNames(), loadVerseText(), formsOf(words)])
+    return { meta, names, words, quoted, forms, phrase: findPhrase(verses, words), all: findAllWords(verses, forms) }
+  })
+  if (error) return <p className="message">{error.message}</p>
+  if (!data) return <Loading />
+  return <SearchDashboard query={query} mode={mode} {...data} />
+}
+
+/** The Hebrew and Greek words behind one English word of the search, in the verses found. */
+interface Behind {
+  word: string
+  lemma: string
+  originals: { strongs: string; verses: Set<number> }[]
+}
+
+function SearchDashboard({ query, mode: chosen, meta, names, words, quoted, forms, phrase, all }: {
+  query: string
+  mode?: SearchMode
+  meta: Meta
+  names: Record<string, NameEntry>
+  words: string[]
+  quoted: boolean
+  forms: string[][]
+  phrase: VerseText[]
+  all: VerseText[]
+}) {
+  // The exact phrase when it's asked for or found, otherwise all the words.
+  const mode: SearchMode = chosen ?? (quoted || phrase.length > 0 || words.length === 1 ? 'phrase' : 'words')
+  const found = mode === 'phrase' ? phrase : all
+  const [view, setView] = useState<Mode>('count')
+  const [scope, setScope] = useState<Scope>({})
+  const [original, setOriginal] = useState<{ strongs: string; verses: Set<number> } | null>(null)
+
+  const occurrences = useMemo(
+    (): Occurrence[] => found.map((v) => ({ ...decodeVerse(v.code), rendering: -1, strongs: '' })),
+    [found],
+  )
+  const filtered = original ? occurrences.filter((o) => original.verses.has(verseKey(o))) : occurrences
+  const scoped = filtered.filter((o) => inScope(meta, scope, o))
+  const inScopeKeys = new Set(occurrences.filter((o) => inScope(meta, scope, o)).map(verseKey))
+
+  // Which Hebrew and Greek words the BSB translates each English word of the search with, here.
+  const uniqueWords = [...new Set(words)]
+  const { data: behind } = useAsync(`ws-q-behind-${query}-${mode}`, async (): Promise<Behind[]> => {
+    const codes = new Set(found.map((v) => v.code))
+    const out: Behind[] = []
+    for (const w of uniqueWords.slice(0, 8)) {
+      const english = await loadEnglish(w).catch(() => null)
+      if (!english) continue // a word too common to index ("the", "of")
+      const top = english.entry.strongs.slice(0, 10)
+      const entries = await Promise.all(top.map(([s]) => loadWord(s)))
+      const originals = top
+        .map(([s, , renderings], i) => ({
+          strongs: s,
+          verses: new Set(entries[i] ? occurrencesOf(s, entries[i]!, renderings).map(verseKey).filter((k) => codes.has(k)) : []),
+        }))
+        .filter((o) => o.verses.size > 0 && names[o.strongs])
+        .sort((a, b) => b.verses.size - a.verses.size)
+        .slice(0, 5)
+      if (originals.length) out.push({ word: w, lemma: english.lemma, originals })
+    }
+    return out
+  })
+
+  // Words worth marking in the verses: the phrase itself, or each word in any of its forms
+  // (leaving out words too common to index, unless that's all there is).
+  const content = forms.filter((_, i) => behind?.some((b) => b.word === words[i]) ?? true)
+  const marks = mode === 'phrase' ? [words.join(' ')] : (content.length ? content : forms).flat()
+
+  const switchMode = (m: SearchMode) => replaceHash(studyHash({ kind: 'search', query, mode: m }))
+  const books = new Set(occurrences.map((o) => o.book)).size
+
+  return (
+    <article className="ws-page">
+      <header className="ws-top">
+        <div className="ws-title">
+          <p className="ws-kicker">Verses · Berean Standard Bible</p>
+          <h1>“{words.join(' ')}”</h1>
+          <div className="ws-search-modes" role="group" aria-label="Match">
+            {words.length > 1 && (
+              <>
+                <button aria-pressed={mode === 'phrase'} onClick={() => switchMode('phrase')}>
+                  Exact phrase <span className="count">{formatCount(phrase.length)}</span>
+                </button>
+                <button aria-pressed={mode === 'words'} onClick={() => switchMode('words')}>
+                  All the words <span className="count">{formatCount(all.length)}</span>
+                </button>
+              </>
+            )}
+            {/* Words with a study page of their own (not "the", "of"…). */}
+            {behind?.map((b) => (
+              <a key={b.word} className="ws-search-word" href={studyHash({ kind: 'english', word: b.lemma })}>
+                Study “{b.word}”
+              </a>
+            ))}
+          </div>
+        </div>
+        <Stats items={[[found.length, 'verses'], [books, 'books']]} />
+      </header>
+
+      {found.length === 0 ? (
+        <div className="message">
+          <p>
+            No verse in the BSB has {mode === 'phrase' ? 'the phrase' : 'all of'} “{words.join(' ')}”.
+          </p>
+          {mode === 'phrase' && all.length > 0 && (
+            <p>
+              <button className="link" onClick={() => switchMode('words')}>
+                {formatCount(all.length)} {all.length === 1 ? 'verse has' : 'verses have'} all the words
+              </button>
+              , in any order.
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <FilterBar
+            count={verseCount(scoped)}
+            scope={scope.book != null || scope.section != null ? scopeLabel(meta, scope) : null}
+            onClearScope={() => setScope({})}
+            chips={[original && { label: `Translating ${names[original.strongs][1]}`, clear: () => setOriginal(null) }]}
+            hint="Select a part of the Bible, or a Hebrew or Greek word behind the phrase, to narrow everything down."
+          />
+
+          <div className="ws-dash">
+            <Card id="where" title="Where it's used" actions={<ModeToggle mode={view} onChange={setView} />} className="ws-main-card">
+              <Explorer meta={meta} occurrences={filtered} mode={view} scope={scope} onScope={setScope} />
+            </Card>
+            <div className="ws-side">
+              <Card
+                id="behind"
+                title="Hebrew and Greek behind it"
+                subtitle="The original words the BSB translates each word with in these verses. Select a bar to see those verses, or a word to study it."
+              >
+                {!behind ? (
+                  <p className="muted">Looking up the original words…</p>
+                ) : behind.length === 0 ? (
+                  <p className="muted">These words are too common to look up one by one.</p>
+                ) : (
+                  behind.map((b) => (
+                    <div key={b.word} className="ws-behind">
+                      <h3>
+                        <a className="ws-en-link" href={studyHash({ kind: 'english', word: b.lemma })}>
+                          {b.word}
+                        </a>
+                      </h3>
+                      <RankedList
+                        unit="verses"
+                        items={b.originals.map((o) => ({
+                          key: o.strongs,
+                          href: studyHash({ kind: 'word', strongs: o.strongs }),
+                          label: <OriginalLabel name={names[o.strongs]} />,
+                          value: [...o.verses].filter((k) => inScopeKeys.has(k)).length,
+                          active: original?.strongs === o.strongs,
+                          selectLabel: `Show the verses where “${b.word}” translates ${names[o.strongs][1]}`,
+                          onSelect: () => setOriginal(original?.strongs === o.strongs ? null : o),
+                        }))}
+                      />
+                    </div>
+                  ))
+                )}
+              </Card>
+            </div>
+          </div>
+
+          <Card id="verses" title="Verses" subtitle={versesLabel(verseCount(scoped))}>
+            <VerseList
+              key={`${mode}-${scope.section}-${scope.book}-${scope.chapter}-${original?.strongs}`}
+              meta={meta}
+              occurrences={scoped}
+              highlight={() => marks}
+              current={new Set(behind?.flatMap((b) => b.originals.map((o) => o.strongs)) ?? [])}
+              onScope={(s) => {
+                setScope(s)
+                document.querySelector('.ws-filterbar')?.scrollIntoView({ behavior: 'smooth' })
+              }}
+            />
+          </Card>
+        </>
+      )}
+    </article>
   )
 }

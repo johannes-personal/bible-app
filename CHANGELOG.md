@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.11.0
+
+- Recorded audio Bibles are marked in the translation picker with a headphones symbol, and come first: first within each language, and in search results languages that have one come first too. A "With audio" filter (remembered) shows only those. For now that's the Berean Standard Bible and the Accessible Ancients Bible; Bible Brain's recordings join once its key works.
+- Word study searches verses by phrase. Type two or more words (or a word in quotes) and the first suggestion is "Verses with …"; for a single word it's the last one.
+  - The results page shows how many verses have the exact phrase and how many have all the words in any order (also in other forms: "love" finds "loved"), and starts on the exact phrase when there is one.
+  - Like the word pages: where it's used (the drill-down heatmap), the verses with the phrase marked, and filters that narrow both.
+  - "Hebrew and Greek behind it": for each word of the phrase, the original words the BSB translates it with in those verses, such as ἀγαπάω *agapaō* behind "love" in 11 of the 13 verses with "love one another". Select one to see just those verses.
+  - Opening a verse in the reader marks the verses with the phrase there, and the bar leads back to the search.
+  - The search uses the BSB's text (public domain), loaded the first time verses are searched; `scripts/build-verse-text.mjs` builds it.
+
 ## 1.10.0
 
 - Side by side on phones: the second translation now has the bottom half of the screen to itself. Each half scrolls on its own and the other follows, to the same verse and as far through it. Read-aloud and autoscroll keep to the top half.

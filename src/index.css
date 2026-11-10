@@ -1665,3 +1665,66 @@ mark.study-word {
 .app:has(.content.split) .follow-button {
   bottom: calc(var(--player-h) + var(--pane-h) + 16px);
 }
+
+/* ---------- Translation picker: recorded audio ---------- */
+
+.picker-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.picker-toolbar .search {
+  flex: 1;
+  min-width: 0;
+}
+
+.picker-toolbar .back {
+  margin-right: auto;
+}
+
+.chip-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chip-toggle .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.chip-toggle.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.narrated {
+  flex: none;
+  display: inline-flex;
+  margin-right: 8px;
+  color: var(--accent);
+}
+
+.narrated .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.audio-note {
+  margin: 4px 0 8px;
+  font-size: 13px;
+}

@@ -32,10 +32,25 @@ export function languageLabel(t: Translation): string {
  * Groups translations by language. Languages the browser prefers come first,
  * then English and Swedish, then the rest alphabetically.
  */
+/**
+ * Free Use Bible API translations with recorded narration (found by asking each translation
+ * for a chapter and checking its audio links; see scripts/find-narrated.py).
+ */
+export const NARRATED_FREE_IDS = new Set(['BSB', 'AAB'])
+
+/** Whether a translation has a recorded audio Bible (not just the device's voice). */
+export const hasNarration = (t: Translation) => !!t.bibleBrainId || NARRATED_FREE_IDS.has(t.freeId ?? t.id)
+
+/**
+ * Translations grouped by language, optionally matching a search and only those with recorded
+ * narration. Narrated translations come first in each language; when searching, languages
+ * with one come before others of the same rank.
+ */
 export function groupTranslations(
   translations: Translation[],
   preferred: string[],
   query = '',
+  audioOnly = false,
 ): LanguageGroup[] {
   const q = query.trim().toLowerCase()
   const matches = (t: Translation) =>
@@ -46,7 +61,7 @@ export function groupTranslations(
 
   const byLang = new Map<string, LanguageGroup>()
   for (const t of translations) {
-    if (!matches(t)) continue
+    if (!matches(t) || (audioOnly && !hasNarration(t))) continue
     const key = languageKey(t.language)
     let g = byLang.get(key)
     if (!g) {
@@ -58,8 +73,12 @@ export function groupTranslations(
 
   const rank = languageRank(preferred)
   const groups = [...byLang.values()]
-  for (const g of groups) g.translations.sort((a, b) => a.name.localeCompare(b.name))
-  return groups.sort((a, b) => rank(a.language) - rank(b.language) || a.label.localeCompare(b.label))
+  const narrated = (t: Translation) => (hasNarration(t) ? 0 : 1)
+  for (const g of groups) g.translations.sort((a, b) => narrated(a) - narrated(b) || a.name.localeCompare(b.name))
+  const withNarration = (g: LanguageGroup) => (q && g.translations.some(hasNarration) ? 0 : 1)
+  return groups.sort(
+    (a, b) => rank(a.language) - rank(b.language) || withNarration(a) - withNarration(b) || a.label.localeCompare(b.label),
+  )
 }
 
 /** Position of a language in the preferred order (browser languages, English, Swedish); Infinity if absent. */

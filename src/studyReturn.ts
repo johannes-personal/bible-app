@@ -6,7 +6,10 @@ export interface StudyReturn {
   hash: string
   /** The word as the study page shows it. */
   label: { original?: string; lang?: string; text: string; gloss?: string }
-  word: { kind: 'word'; strongs: string } | { kind: 'english'; word: string }
+  word:
+    | { kind: 'word'; strongs: string }
+    | { kind: 'english'; word: string }
+    | { kind: 'search'; query: string; mode?: 'phrase' | 'words' }
   /** The chapter that was opened; leaving it ends the visit. */
   book: string
   chapter: number

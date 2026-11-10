@@ -1172,3 +1172,72 @@ a.ws-trail-item:hover {
   color: var(--accent);
   text-decoration-color: currentColor;
 }
+
+/* Verse search: how the words are matched, and links to study each word. */
+.ws-search-modes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ws-search-modes button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ws-search-modes button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ws-search-modes .count {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.ws-search-word {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.ws-search-word:hover {
+  text-decoration: underline;
+}
+
+.ws-behind + .ws-behind {
+  margin-top: 14px;
+}
+
+.ws-behind h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.ws-verse-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.ws-verse-search .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+}

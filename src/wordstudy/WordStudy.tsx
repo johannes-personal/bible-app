@@ -6,7 +6,8 @@ import { goTo, hashFor, LAST_KEY, normalizeStrongs, parseHash, parseStudyHash, s
 import { useSettings } from '../settings'
 import { load as loadStored } from '../storage'
 import { clearStudyReturn, saveStudyReturn } from '../studyReturn'
-import { EnglishPage, WordPage } from './dashboards'
+import { EnglishPage, SearchPage, WordPage } from './dashboards'
+import { isPhrase } from './phrase'
 import { fold, formatCount, LANGUAGE_NAMES, loadNames, suggestEnglish, suggestOriginal, type NameEntry } from './data'
 import './wordstudy.css'
 
@@ -50,6 +51,7 @@ export default function WordStudy({ route }: { route: StudyRoute }) {
         {route.kind === 'home' && <Home />}
         {route.kind === 'word' && <WordPage key={route.strongs} strongs={route.strongs} />}
         {route.kind === 'english' && <EnglishPage key={route.word} word={route.word} />}
+        {route.kind === 'search' && <SearchPage key={`${route.query}/${route.mode}`} query={route.query} mode={route.mode} />}
         <footer className="attribution ws-credit">
           Word data from the Berean Standard Bible interlinear (public domain). Definitions from the{' '}
           <a href="https://github.com/STEPBible/STEPBible-Data" target="_blank" rel="noreferrer">STEPBible</a> brief lexicons
@@ -89,10 +91,17 @@ function useReturnFromReader(route: StudyRoute) {
         label:
           route.kind === 'english'
             ? { text: route.word, gloss: 'English' }
-            : name
-              ? { original: name[0], lang: name[4] === 'g' ? 'grc' : 'he', text: name[1], gloss: name[2] }
-              : { text: route.strongs },
-        word: route.kind === 'word' ? { kind: 'word', strongs: route.strongs } : { kind: 'english', word: route.word },
+            : route.kind === 'search'
+              ? { text: `“${route.query}”`, gloss: 'verses' }
+              : name
+                ? { original: name[0], lang: name[4] === 'g' ? 'grc' : 'he', text: name[1], gloss: name[2] }
+                : { text: route.strongs },
+        word:
+          route.kind === 'word'
+            ? { kind: 'word', strongs: route.strongs }
+            : route.kind === 'english'
+              ? { kind: 'english', word: route.word }
+              : { kind: 'search', query: route.query, mode: route.mode },
         book: target.book,
         chapter: target.chapter,
       })
@@ -141,6 +150,11 @@ function CurrentWord({ route }: { route: StudyRoute }) {
           <span className="ws-current-word">{route.word}</span>
           <span className="muted"> · English</span>
         </>
+      ) : route.kind === 'search' ? (
+        <>
+          <span className="ws-current-word">“{route.query}”</span>
+          <span className="muted"> · verses</span>
+        </>
       ) : name ? (
         <>
           <span className="ws-lemma" lang={name[4] === 'g' ? 'grc' : 'he'}>{name[0]}</span>{' '}
@@ -153,7 +167,7 @@ function CurrentWord({ route }: { route: StudyRoute }) {
 }
 
 function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boolean; onLeave?: () => void }) {
-  const [query, setQuery] = useState(route.kind === 'english' ? route.word : '')
+  const [query, setQuery] = useState(route.kind === 'english' ? route.word : route.kind === 'search' ? route.query : '')
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
@@ -166,7 +180,7 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
   }, [focus])
 
   // A new page shows its own word in the box (or nothing), with the suggestions closed.
-  const routeWord = route.kind === 'english' ? route.word : ''
+  const routeWord = route.kind === 'english' ? route.word : route.kind === 'search' ? route.query : ''
   useEffect(() => {
     // oxlint-disable-next-line react/set-state-in-effect
     setQuery(routeWord)
@@ -197,6 +211,21 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
         }
       }
       const list = ranked.sort((a, b) => b.rank - a.rank).slice(0, 8).map((r) => r.s)
+      // Verses with the words: first for a phrase, last for a single word (names, places…).
+      if (q && !strongs) {
+        const verses: Suggestion = {
+          key: 'verses',
+          hash: studyHash({ kind: 'search', query: q }),
+          label: (
+            <span className="ws-verse-search">
+              <Icon name="search" /> Verses with “{q}”
+            </span>
+          ),
+          hint: 'BSB',
+        }
+        if (isPhrase(q)) list.unshift(verses)
+        else list.push(verses)
+      }
       if (live) {
         setSuggestions(list)
         setActive(0)
@@ -220,6 +249,7 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
     const q = query.trim()
     const strongs = normalizeStrongs(q)
     if (strongs) return go(studyHash({ kind: 'word', strongs }))
+    if (isPhrase(q)) return go(studyHash({ kind: 'search', query: q }))
     if (q) go(studyHash({ kind: 'english', word: q.toLowerCase() }))
   }
 
@@ -237,7 +267,7 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
         ref={inputRef}
         type="search"
         value={query}
-        placeholder="Search a word: love, mercy, chesed, G26…"
+        placeholder="A word or phrase: love, chesed, G26, love one another…"
         aria-label="Search for a word"
         aria-autocomplete="list"
         aria-expanded={open && suggestions.length > 0}
@@ -306,6 +336,8 @@ const EXAMPLES: [string, string][] = [
   ['shalom', studyHash({ kind: 'word', strongs: 'H7965' })],
   ['agapē', studyHash({ kind: 'word', strongs: 'G0026' })],
   ['logos', studyHash({ kind: 'word', strongs: 'G3056' })],
+  ['“love one another”', studyHash({ kind: 'search', query: 'love one another' })],
+  ['“do not be afraid”', studyHash({ kind: 'search', query: 'do not be afraid' })],
 ]
 
 function Home() {
@@ -369,7 +401,13 @@ function Trail({ route }: { route: StudyRoute }) {
       <span className="muted">Recent</span>
       {items.map(({ hash, route: r }) => {
         const label =
-          r!.kind === 'word' ? (names?.[r!.strongs]?.[1] ?? r!.strongs) : r!.kind === 'english' ? `“${r!.word}”` : ''
+          r!.kind === 'word'
+            ? (names?.[r!.strongs]?.[1] ?? r!.strongs)
+            : r!.kind === 'english'
+              ? `“${r!.word}”`
+              : r!.kind === 'search'
+                ? `“${r!.query}” · verses`
+                : ''
         return hash === current ? (
           <span key={hash} className="ws-trail-item current" aria-current="page">{label}</span>
         ) : (
