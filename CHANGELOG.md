@@ -9,6 +9,7 @@
   - Read-aloud, verse links, related verses and word study marks follow the first translation; the second has its own footnotes.
 - Swipe left or right on a touch screen to go to the next or previous chapter (the other way round in right-to-left translations). The text follows your finger; vertical scrolling, short swipes, swipes from the screen's edge and text selection are left alone. It can be turned off in the reading settings.
 - Fonts: choose Serif (Literata, as before), Classic (EB Garamond), Sans-serif (Inter) or Legible (Atkinson Hyperlegible) in the reading settings. Text size stays comparable across them.
+- On phones, choosing a translation or a book and chapter now takes the whole screen, from the top, and ends where the on-screen keyboard begins, so search results stay in view and can be tapped. The page behind no longer scrolls while it's open. The book search no longer brings up the keyboard on its own on touch screens (the translation search still does); on a computer it still takes typing straight away.
 - Pressing and holding a verse for its Hebrew or Greek words is now a setting, off by default, so pressing and holding selects text as usual. Tapping a verse number still shows the words.
 
 ## 1.8.0

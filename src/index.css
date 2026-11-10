@@ -615,6 +615,28 @@ button:disabled {
     border-radius: 16px 16px 0 0;
     padding-bottom: env(safe-area-inset-bottom);
   }
+
+  /* The pickers take the whole screen, from the top, and end where the keyboard begins, so
+     their results stay in view and can be tapped while searching. */
+  .sheet-backdrop:has(.sheet-wide) {
+    align-items: flex-start;
+  }
+
+  .sheet-wide {
+    position: fixed;
+    top: var(--visible-top, 0);
+    left: 0;
+    right: 0;
+    height: var(--visible-height, 100dvh);
+    max-height: none;
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top);
+    animation: fade 0.15s ease-out;
+  }
+
+  .sheet-wide .sheet-body {
+    flex: 1;
+  }
 }
 
 .search {
