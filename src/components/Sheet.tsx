@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { isTouchScreen } from '../device'
 import { Icon } from './Icon'
 
 interface Props {
@@ -10,7 +11,10 @@ interface Props {
   size?: 'wide' | 'narrow'
 }
 
-/** A modal panel: a bottom sheet on phones, a centered dialog on larger screens. */
+/**
+ * A modal panel: a centered dialog on larger screens. On phones, wide sheets (the pickers)
+ * fill the screen above the on-screen keyboard, and narrow ones are bottom sheets.
+ */
 export function Sheet({ title, onClose, children, toolbar, size = 'wide' }: Props) {
   const panel = useRef<HTMLDivElement>(null)
   const close = useRef(onClose)
@@ -21,14 +25,26 @@ export function Sheet({ title, onClose, children, toolbar, size = 'wide' }: Prop
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close.current()
     window.addEventListener('keydown', onKey)
-    const prevOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const unlock = lockScroll()
     const prevFocus = document.activeElement as HTMLElement | null
-    if (!panel.current?.querySelector('[autofocus]')) panel.current?.focus()
+    if (!panel.current?.querySelector('[autofocus]')) panel.current?.focus({ preventScroll: true })
+
+    // Keep the sheet within the part of the screen the keyboard leaves visible.
+    const viewport = window.visualViewport
+    const fit = () => {
+      if (!viewport || !panel.current) return
+      panel.current.style.setProperty('--visible-height', `${viewport.height}px`)
+      panel.current.style.setProperty('--visible-top', `${viewport.offsetTop}px`)
+    }
+    fit()
+    viewport?.addEventListener('resize', fit)
+    viewport?.addEventListener('scroll', fit)
     return () => {
       window.removeEventListener('keydown', onKey)
-      document.body.style.overflow = prevOverflow
-      prevFocus?.focus?.()
+      viewport?.removeEventListener('resize', fit)
+      viewport?.removeEventListener('scroll', fit)
+      unlock()
+      prevFocus?.focus?.({ preventScroll: true })
     }
   }, [])
 
@@ -53,4 +69,30 @@ export function Sheet({ title, onClose, children, toolbar, size = 'wide' }: Prop
       </div>
     </div>
   )
+}
+
+/**
+ * Stops the page behind a sheet from scrolling. `overflow: hidden` alone doesn't on iOS, so on
+ * touch screens the body is pinned in place (at its scroll position) and put back afterwards.
+ */
+function lockScroll() {
+  const { body } = document
+  if (!isTouchScreen()) {
+    // Elsewhere hiding the overflow is enough, and keeps the sticky header in place.
+    const overflow = body.style.overflow
+    body.style.overflow = 'hidden'
+    return () => {
+      body.style.overflow = overflow
+    }
+  }
+  const y = window.scrollY
+  const prev = { overflow: body.style.overflow, position: body.style.position, top: body.style.top, width: body.style.width }
+  body.style.overflow = 'hidden'
+  body.style.position = 'fixed'
+  body.style.top = `-${y}px`
+  body.style.width = '100%'
+  return () => {
+    Object.assign(body.style, prev)
+    window.scrollTo(0, y)
+  }
 }

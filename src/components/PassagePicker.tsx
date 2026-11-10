@@ -3,6 +3,7 @@ import { fetchBooks, type Book, type ChapterRef } from '../api'
 import { chapterNumbers, groupBooks } from '../books'
 import { useAsync } from '../hooks'
 import { Icon } from './Icon'
+import { isTouchScreen } from '../device'
 import { Sheet } from './Sheet'
 
 interface Props {
@@ -77,7 +78,8 @@ export function PassagePicker({ current, onSelect, onClose }: Props) {
             const first = groups[0]?.books[0]
             if (e.key === 'Enter' && first) pickBook(first)
           }}
-          autoFocus
+          // Most people tap a book; on touch screens don't cover the list with the keyboard.
+          autoFocus={!isTouchScreen()}
         />
       }
     >
