@@ -89,12 +89,14 @@ export function PassagePicker({ current, onSelect, onClose }: Props) {
           placeholder="Book, reference or words (John 3:16, for God so loved)"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          enterKeyHint="search"
           onKeyDown={(e) => {
+            // Enter never leaves for a chapter or verse: those open with a tap. On a phone it
+            // puts the keyboard away to show the results; elsewhere it opens the one matching book.
             if (e.key !== 'Enter') return
-            if (reference) return onSelect({ translationId, book: reference.book, chapter: reference.chapter, verse: reference.verse })
-            const first = groups[0]?.books[0]
-            if (first) return pickBook(first)
-            if (verses?.[0]) goToVerse(verses[0])
+            if (isTouchScreen()) return e.currentTarget.blur()
+            const matching = groups.flatMap((g) => g.books)
+            if (matching.length === 1) pickBook(matching[0])
           }}
           // Most people tap a book; on touch screens don't cover the list with the keyboard.
           autoFocus={!isTouchScreen()}

@@ -134,7 +134,12 @@ export function bestMatches(verses: VerseText[], words: string[], forms: string[
 export function snippet(text: string, words: string[], max = 120): string {
   if (text.length <= max) return text
   const lower = text.toLowerCase().replace(/[’‘]/g, "'")
-  const at = words.map((w) => lower.search(new RegExp(`(?<![\\p{L}])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'u'))).find((i) => i >= 0) ?? 0
+  // Around the whole phrase when the verse has it, else around the first word found.
+  const candidates = words.length > 1 ? [words.join(' '), ...words] : words
+  const at =
+    candidates
+      .map((w) => lower.search(new RegExp(`(?<![\\p{L}])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '[\\s\\p{P}]+')}`, 'u')))
+      .find((i) => i >= 0) ?? 0
   let start = Math.max(0, at - 30)
   if (start > 0) start = text.indexOf(' ', start) + 1 || start
   const end = Math.min(text.length, start + max)

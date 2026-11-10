@@ -1270,3 +1270,36 @@ a.ws-trail-item:hover {
   color: var(--text);
   border-radius: 3px;
 }
+
+/* The results panel scrolls on its own (its height is fitted above the keyboard). */
+.ws-suggestions {
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ws-suggestion-section {
+  padding: 10px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ws-suggestion-section:first-child {
+  padding-top: 4px;
+}
+
+.ws-suggestions a .muted {
+  flex: none;
+  font-size: 13px;
+}
+
+@media (pointer: coarse) {
+  .ws-suggestions a {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}

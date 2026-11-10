@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { ChapterRef } from '../api'
 import { Icon } from '../components/Icon'
+import { isTouchScreen } from '../device'
 import { useAsync } from '../hooks'
 import { goTo, hashFor, LAST_KEY, normalizeStrongs, parseHash, parseStudyHash, studyHash, takeReplacedHash, type StudyRoute } from '../route'
 import { useSettings } from '../settings'
@@ -73,10 +74,12 @@ interface Suggestion {
   hint: string
   /** A verse: shown on two lines (reference, then the text around the match). */
   verse?: boolean
+  /** A heading shown above it, starting a group ("Verses", "Words"). */
+  section?: string
 }
 
 /** How many verses to show among the suggestions. */
-const VERSE_SUGGESTIONS = 3
+const VERSE_SUGGESTIONS = 5
 
 /**
  * Following a link from a word's page into the reader remembers the word, so the reader can
@@ -175,17 +178,20 @@ function CurrentWord({ route }: { route: StudyRoute }) {
 function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boolean; onLeave?: () => void }) {
   const [query, setQuery] = useState(route.kind === 'english' ? route.word : route.kind === 'search' ? route.query : '')
   const [open, setOpen] = useState(false)
-  const [active, setActive] = useState(0)
+  // Nothing is chosen until the arrow keys choose it, so Enter never jumps away by itself.
+  const [active, setActive] = useState(-1)
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const { data: names } = useAsync('ws-names', loadNames)
   const inputRef = useRef<HTMLInputElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
+  const panelRef = useRef<HTMLUListElement>(null)
 
   // Opened from the header's search button (while scrolled down on a phone).
   useEffect(() => {
     if (focus) inputRef.current?.focus({ preventScroll: true })
   }, [focus])
 
-  // A new page shows its own word in the box (or nothing), with the suggestions closed.
+  // A new page shows its own word in the box (or nothing), with the results closed.
   const routeWord = route.kind === 'english' ? route.word : route.kind === 'search' ? route.query : ''
   useEffect(() => {
     // oxlint-disable-next-line react/set-state-in-effect
@@ -194,9 +200,50 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
     if (route.kind === 'home') inputRef.current?.focus()
   }, [route, routeWord])
 
+  const close = () => {
+    setOpen(false)
+    setActive(-1)
+    onLeave?.()
+  }
+
+  // The results stay open while reading them (also with the keyboard put away), until a tap
+  // outside, Escape, or picking one.
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: PointerEvent) => {
+      if (!formRef.current?.contains(e.target as Node)) close()
+    }
+    window.addEventListener('pointerdown', onDown)
+    return () => window.removeEventListener('pointerdown', onDown)
+    // `close` only sets state and calls the latest onLeave.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  // Keep the panel above the on-screen keyboard.
+  useEffect(() => {
+    if (!open) return
+    const viewport = window.visualViewport
+    const fit = () => {
+      const panel = panelRef.current
+      if (!panel) return
+      const top = panel.getBoundingClientRect().top
+      const bottom = viewport ? viewport.height + viewport.offsetTop : window.innerHeight
+      panel.style.maxHeight = `${Math.max(160, bottom - top - 12)}px`
+    }
+    fit()
+    viewport?.addEventListener('resize', fit)
+    window.addEventListener('resize', fit)
+    return () => {
+      viewport?.removeEventListener('resize', fit)
+      window.removeEventListener('resize', fit)
+    }
+  }, [open, suggestions])
+
   useEffect(() => {
     let live = true
     const q = query.trim()
+    // A second word means verses are wanted: start loading their text straight away.
+    if (isPhrase(q)) void loadVerseText().catch(() => {})
     const timer = setTimeout(async () => {
       // Exact matches first (in either language), then the most used words.
       const ranked: { s: Suggestion; rank: number }[] = []
@@ -216,100 +263,113 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
           ranked.push({ s: originalSuggestion(s, names[s]), rank: (exact ? 1e6 : 0) + count })
         }
       }
-      const list = ranked.sort((a, b) => b.rank - a.rank).slice(0, 8).map((r) => r.s)
-      const allVerses = (count?: number): Suggestion => ({
+      const words = ranked
+        .sort((a, b) => b.rank - a.rank)
+        .slice(0, 8)
+        .map((r, i): Suggestion => ({ ...r.s, section: i === 0 ? 'Words' : undefined }))
+      const allVerses = (count: number | 'loading' | null): Suggestion => ({
         key: 'verses',
         hash: studyHash({ kind: 'search', query: q }),
         label: (
           <span className="ws-verse-search">
             <Icon name="search" />{' '}
-            {count == null
-              ? `Verses with “${q}”`
-              : count === 0
-                ? `No verse has “${q}”`
-                : `All ${formatCount(count)} ${count === 1 ? 'verse' : 'verses'} with “${q}”`}
+            {count === 'loading'
+              ? 'Searching verses…'
+              : count == null
+                ? `Verses with “${q}”`
+                : count === 0
+                  ? `No verse has “${q}”`
+                  : count === 1
+                    ? 'Open in word study'
+                    : `See all ${formatCount(count)} verses`}
           </span>
         ),
-        hint: count == null ? 'BSB' : 'Study',
+        hint: count === 'loading' || count === 0 ? '' : 'with the Hebrew and Greek',
       })
-      if (!q || strongs) {
-        if (live) setSuggestions(list)
-        return
+      const show = (list: Suggestion[]) => {
+        if (!live) return
+        setSuggestions(list)
+        setActive(-1)
       }
-      // A single word: its study pages first, then verses with it (names, places…).
-      if (!isPhrase(q)) {
-        if (live) {
-          setSuggestions([...list, allVerses()])
-          setActive(0)
-        }
-        return
-      }
-      // A phrase: show the way to its verses at once, then the best of them once the text is in.
-      if (live) {
-        setSuggestions([allVerses(), ...list])
-        setActive(0)
-      }
-      const { words } = parseQuery(q)
-      const [meta, text, forms] = await Promise.all([loadMeta(), loadVerseText(), formsOf(words)])
+      if (!q || strongs) return show(words)
+      // A single word: its study pages first, then the way to verses with it (names, places…).
+      if (!isPhrase(q)) return show([...words, allVerses(null)])
+      // A phrase: verses first, the best ones as soon as the text is in.
+      show([{ ...allVerses('loading'), section: 'Verses' }, ...words])
+      const { words: terms } = parseQuery(q)
+      const [meta, text, forms] = await Promise.all([loadMeta(), loadVerseText(), formsOf(terms)])
       if (!live) return
       // The exact phrase when it's there (as the results page starts with); otherwise the verses
       // with all the words, closest together first.
-      const exact = findPhrase(text, words)
-      const matching = exact.length ? exact : bestMatches(findAllWords(text, forms), words, forms)
-      const count = matching.length
-      const verses = matching.slice(0, VERSE_SUGGESTIONS).map((v): Suggestion => {
+      const exact = findPhrase(text, terms)
+      const matching = exact.length ? exact : bestMatches(findAllWords(text, forms), terms, forms)
+      const marks = exact.length ? [terms.join(' ')] : [terms.join(' '), ...forms.flat()]
+      const verses = matching.slice(0, VERSE_SUGGESTIONS).map((v, i): Suggestion => {
         const o = decodeVerse(v.code)
         return {
           key: `v${v.code}`,
           hash: verseHash(meta, o),
           verse: true,
+          section: i === 0 ? (exact.length ? 'Verses' : 'Closest verses') : undefined,
           label: (
             <>
               <strong>
                 {meta.books[o.book].name} {o.chapter}:{o.verse}
               </strong>
               <span className="ws-suggestion-text">
-                {splitMarked(snippet(v.text, words), [words.join(' '), ...forms.flat()]).map((p, i) =>
-                  p.marked ? <mark key={i}>{p.text}</mark> : p.text,
-                )}
+                {splitMarked(snippet(v.text, terms), marks).map((p, i) => (p.marked ? <mark key={i}>{p.text}</mark> : p.text))}
               </span>
             </>
           ),
           hint: '',
         }
       })
-      // A few matches: probably a verse being looked for, so the verses come first. Many: the
-      // way to all of them first, with the best few after it.
-      const few = count > 0 && count <= VERSE_SUGGESTIONS
-      setSuggestions(
-        count === 0 ? [allVerses(0), ...list] : few ? [...verses, allVerses(count), ...list] : [allVerses(count), ...verses, ...list],
-      )
-      setActive(0)
-    }, 120)
+      const all = allVerses(matching.length)
+      show(matching.length ? [...verses, all, ...words] : [{ ...all, section: 'Verses' }, ...words])
+    }, 100)
     return () => {
       live = false
       clearTimeout(timer)
     }
   }, [query, names])
 
-  const go = (hash: string) => {
+  /** Opening a result. A verse remembers the search, so the reader marks it there. */
+  const pick = (s: Suggestion) => {
+    if (s.verse) {
+      const o = parseHash(s.hash)
+      if (o) {
+        saveStudyReturn({
+          hash: studyHash({ kind: 'search', query: query.trim() }),
+          label: { text: `“${query.trim()}”`, gloss: 'verses' },
+          word: { kind: 'search', query: query.trim() },
+          book: o.book,
+          chapter: o.chapter,
+        })
+      }
+    }
     setOpen(false)
+    setActive(-1)
     inputRef.current?.blur()
-    goTo(hash)
   }
 
+  // Enter opens only a result chosen with the arrow keys. Otherwise it puts the keyboard away
+  // (on a phone), leaving the results to read and tap.
   const submit = () => {
     const s = suggestions[active]
-    if (open && s) return go(s.hash)
-    const q = query.trim()
-    const strongs = normalizeStrongs(q)
-    if (strongs) return go(studyHash({ kind: 'word', strongs }))
-    if (isPhrase(q)) return go(studyHash({ kind: 'search', query: q }))
-    if (q) go(studyHash({ kind: 'english', word: q.toLowerCase() }))
+    if (open && s) {
+      pick(s)
+      goTo(s.hash)
+      return
+    }
+    setOpen(true)
+    if (isTouchScreen()) inputRef.current?.blur()
   }
+
+  const showing = open && query.trim() && suggestions.length > 0
 
   return (
     <form
+      ref={formRef}
       className="ws-search"
       role="search"
       onSubmit={(e) => {
@@ -321,53 +381,59 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
       <input
         ref={inputRef}
         type="search"
+        enterKeyHint="search"
         value={query}
         placeholder="A word or phrase: love, chesed, G26, love one another…"
-        aria-label="Search for a word"
+        aria-label="Search for a word or verses"
         aria-autocomplete="list"
-        aria-expanded={open && suggestions.length > 0}
+        aria-expanded={!!showing}
         aria-controls="ws-suggestions"
+        aria-activedescendant={showing && active >= 0 ? `ws-s-${active}` : undefined}
         onChange={(e) => {
           setQuery(e.target.value)
           setOpen(true)
         }}
         onFocus={() => setOpen(true)}
-        onBlur={() =>
-          setTimeout(() => {
-            setOpen(false)
-            onLeave?.()
-          }, 150)
-        }
+        onBlur={() => {
+          // With nothing to show, a phone's header goes back to naming the word.
+          if (!query.trim()) setTimeout(() => onLeave?.(), 150)
+        }}
         onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') setActive((a) => Math.min(a + 1, suggestions.length - 1))
-          else if (e.key === 'ArrowUp') setActive((a) => Math.max(a - 1, 0))
-          else if (e.key === 'Escape') setOpen(false)
+          if (e.key === 'ArrowDown') {
+            setOpen(true)
+            setActive((a) => Math.min(a + 1, suggestions.length - 1))
+          } else if (e.key === 'ArrowUp') setActive((a) => Math.max(a - 1, -1))
+          else if (e.key === 'Escape') close()
           else return
           e.preventDefault()
         }}
       />
-      {open && query.trim() && suggestions.length > 0 && (
-        <ul className="ws-suggestions" id="ws-suggestions" role="listbox">
+      {showing && (
+        <ul ref={panelRef} className="ws-suggestions" id="ws-suggestions" role="listbox">
           {suggestions.map((s, i) => (
-            <li key={s.key} role="option" aria-selected={i === active}>
-              <a
-                href={s.hash}
-                className={[i === active && 'active', s.verse && 'ws-suggestion-verse'].filter(Boolean).join(' ') || undefined}
-                onPointerDown={(e) => {
-                  e.preventDefault()
-                  go(s.hash)
-                }}
-              >
-                {s.verse ? (
-                  s.label
-                ) : (
-                  <>
-                    <span>{s.label}</span>
-                    <span className="muted">{s.hint}</span>
-                  </>
-                )}
-              </a>
-            </li>
+            <Fragment key={s.key}>
+              {s.section && (
+                <li className="ws-suggestion-section" role="presentation">
+                  {s.section}
+                </li>
+              )}
+              <li id={`ws-s-${i}`} role="option" aria-selected={i === active}>
+                <a
+                  href={s.hash}
+                  className={[i === active && 'active', s.verse && 'ws-suggestion-verse'].filter(Boolean).join(' ') || undefined}
+                  onClick={() => pick(s)}
+                >
+                  {s.verse ? (
+                    s.label
+                  ) : (
+                    <>
+                      <span>{s.label}</span>
+                      <span className="muted">{s.hint}</span>
+                    </>
+                  )}
+                </a>
+              </li>
+            </Fragment>
           ))}
         </ul>
       )}

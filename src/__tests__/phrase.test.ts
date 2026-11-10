@@ -61,5 +61,7 @@ describe('ranking verses', () => {
     expect(s.startsWith('…')).toBe(true)
     expect(s).toContain('Let My people go')
     expect(snippet('Jesus wept.', ['wept'])).toBe('Jesus wept.')
+    const thess = 'Now about brotherly love, you do not need anyone to write to you, because you yourselves have been taught by God to love one another.'
+    expect(snippet(thess, ['love', 'one', 'another'], 60)).toContain('love one another')
   })
 })
