@@ -97,7 +97,7 @@ export function RankedList({ items, unit }: { items: RankedItem[]; unit?: string
             </span>
             <span className="ws-bar-value">
               {formatCount(item.value)}
-              {unit && <span className="muted"> {unit}</span>}
+              {unit && <span className="muted"> {item.value === 1 ? unit.replace(/s$/, '') : unit}</span>}
             </span>
           </span>
         )

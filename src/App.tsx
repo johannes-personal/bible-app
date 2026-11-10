@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { fetchBooks, fetchChapter, fetchCrossRefs, fetchTranslations, findTranslation, type Book, type ChapterRef, type Translation } from './api'
 import { relatedVerses } from './crossrefs'
 import type { VerseRange } from './references'
@@ -8,6 +9,7 @@ import { Icon } from './components/Icon'
 import { ParallelPane } from './components/ParallelPane'
 import { PassagePicker } from './components/PassagePicker'
 import { PlayerBar } from './components/PlayerBar'
+import { ReaderSearch } from './components/ReaderSearch'
 import type { Anchor } from './components/Popover'
 import { Reader, type ParallelText } from './components/Reader'
 import { StudyBar } from './components/StudyBar'
@@ -256,6 +258,31 @@ export default function App() {
     target.classList.add('flash')
   }, [])
 
+  // Searching from the header, without leaving the chapter. The box is focused in the same tap
+  // that opens it, which is what lets a phone bring up its keyboard.
+  const [searching, setSearching] = useState(false)
+  const searchInput = useRef<HTMLInputElement>(null)
+  const openSearch = useCallback(() => {
+    void import('./wordstudy/SearchResults') // so the results come up quickly
+    flushSync(() => setSearching(true))
+    searchInput.current?.focus()
+  }, [])
+  const closeSearch = useCallback(() => setSearching(false), [])
+  useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect
+    setSearching(false)
+  }, [ref.translationId, ref.book, ref.chapter, ref.verse])
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== '/' || panel || searching || e.ctrlKey || e.metaKey || e.altKey) return
+      if ((e.target as HTMLElement).closest('input, select, textarea')) return
+      e.preventDefault()
+      openSearch()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [panel, searching, openSearch])
+
   // Arrow keys turn pages.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -353,6 +380,10 @@ export default function App() {
     <div className={`app${settings.redLetters ? ' red-letters' : ''}${settings.showVerseNumbers ? '' : ' hide-verse-numbers'}`}>
       <header className="app-header">
         <div className="header-inner">
+          {searching ? (
+            <ReaderSearch input={searchInput} books={books ?? undefined} translationId={ref.translationId} onClose={closeSearch} />
+          ) : (
+            <>
           <button className="pill passage-pill" onClick={() => setPanel('passage')} aria-label="Choose book and chapter">
             <span className="pill-text">{title || '…'}</span>
             <Icon name="chevronDown" />
@@ -367,13 +398,15 @@ export default function App() {
             <Icon name="chevronDown" />
           </button>
           <span className="spacer" />
-          <a className="study-link" href="#/study" aria-label="Word study" title="Word study">
+          <button className="study-link" onClick={openSearch} aria-label="Search" title="Search passages, verses and words (/)">
             <Icon name="search" />
-            <span>Study</span>
-          </a>
+            <span>Search</span>
+          </button>
           <button className="icon-button" onClick={() => setPanel('settings')} aria-label="Reading settings">
             <span className="aa" aria-hidden="true">Aa</span>
           </button>
+            </>
+          )}
         </div>
       </header>
 

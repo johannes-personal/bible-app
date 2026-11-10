@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.11.0
+
+- Recorded audio Bibles are marked in the translation picker with a headphones symbol, and come first: first within each language, and in search results languages that have one come first too. A "With audio" filter (remembered) shows only those. For now that's the Berean Standard Bible and the Accessible Ancients Bible; Bible Brain's recordings join once its key works.
+- Search from the reader without leaving the chapter: the header's Search button (or "/" on a keyboard) turns the header into a search box with the keyboard up. Results open under it as you type: a typed reference ("jn 3:16" → Go to John 3:16), the verses that match best, the way to all of them in word study, and words to study. Only tapping a result goes anywhere: a verse or reference opens in the translation being read. Enter on a phone just puts the keyboard away; Cancel, Escape or a tap outside closes the search.
+- Search boxes have a ✕ to clear them (keeping the keyboard up), and iPhones no longer zoom in when the search opens.
+- Words still being typed are matched as the start of a word: "love one ano" already finds "love one another", marked in full, and "See all" searches for the completed phrase.
+- Find a verse by its wording, in the reader: the book picker's search now takes references ("jn 3:16", "1 cor 13:4-7", "Psalm 23") and words ("for God so loved"), listing the verses whose BSB wording matches, best first; tapping one opens it in the translation being read. Enter puts a phone's keyboard away rather than jumping anywhere.
+- Word study searches verses by phrase, right in the search box: type two or more words (or a word in quotes) and the five best-matching verses appear in the results under the box, with a reference and the text around the match ("for God so loved" shows John 3:16), then "See all", then matching words. A misremembered quote ("god so love the world") still finds the closest verses. For a single word, "Verses with …" comes after the words.
+  - Searching never leaves the page: results open only when one is tapped (or chosen with the arrow keys and Enter). On a phone, the keyboard's Search key just puts the keyboard away; the results stay open until a tap outside, and fit above the keyboard.
+  - The verse text starts loading at the second word typed.
+  - The results page shows how many verses have the exact phrase and how many have all the words in any order (also in other forms: "love" finds "loved"), and starts on the exact phrase when there is one.
+  - The verses come first ("Best matches": exact phrase, or all the words closest together and in order first), then the word breakdown.
+  - Like the word pages: where it's used (the drill-down heatmap), the verses with the phrase marked, and filters that narrow both.
+  - "Hebrew and Greek behind it": for each word of the phrase, the original words the BSB translates it with in those verses, such as ἀγαπάω *agapaō* behind "love" in 11 of the 13 verses with "love one another". Select one to see just those verses.
+  - Opening a verse in the reader marks the verses with the phrase there, and the bar leads back to the search.
+  - The search uses the BSB's text (public domain), loaded the first time verses are searched; `scripts/build-verse-text.mjs` builds it.
+
 ## 1.10.0
 
 - Side by side on phones: the second translation now has the bottom half of the screen to itself. Each half scrolls on its own and the other follows, to the same verse and as far through it. Read-aloud and autoscroll keep to the top half.

@@ -1,6 +1,7 @@
 import { fetchInterlinear } from '../api'
 import type { StudyReturn } from '../studyReturn'
-import { loadEnglish, loadMeta, loadWord, occurrencesOf, type Occurrence } from './data'
+import { decodeVerse, loadEnglish, loadMeta, loadWord, occurrencesOf, type Occurrence } from './data'
+import { findAllWords, findPhrase, formsOf, loadVerseText, parseQuery } from './phrase'
 
 // Where a studied word occurs in a chapter, for the reader to mark (loaded when first needed).
 
@@ -32,6 +33,19 @@ export async function chapterMarks(word: StudyReturn['word'], book: string, chap
     found = occurrencesOf(word.strongs, entry).filter(here)
     phrases = found.filter((o) => o.rendering >= 0).map((o) => entry.renderings[o.rendering][0])
     strongs = [word.strongs]
+  } else if (word.kind === 'search') {
+    // Verses found by a phrase: the same search, within this chapter.
+    const { words, quoted } = parseQuery(word.query)
+    const verses = (await loadVerseText()).filter((v) => Math.floor(v.code / 1000) === index * 1000 + chapter)
+    const phraseFound = findPhrase(verses, words)
+    const mode = word.mode ?? (quoted || phraseFound.length > 0 || words.length === 1 ? 'phrase' : 'words')
+    const forms = mode === 'words' ? await formsOf(words) : []
+    found = (mode === 'phrase' ? phraseFound : findAllWords(verses, forms)).map((v) => ({
+      ...decodeVerse(v.code),
+      rendering: -1,
+      strongs: '',
+    }))
+    phrases = mode === 'phrase' ? [words.join(' ')] : forms.flat()
   } else {
     const english = await loadEnglish(word.word)
     if (!english) return empty

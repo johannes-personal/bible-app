@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Translation } from '../api'
-import { groupTranslations, partitionLanguages } from '../translations'
+import { groupTranslations, hasNarration, partitionLanguages } from '../translations'
 import { hashFor, initialRoute, parseHash } from '../route'
 
 const t = (id: string, language: string, languageEnglishName: string, name = id): Translation => ({
@@ -75,5 +75,29 @@ describe('route hash', () => {
     expect(parseHash('#/nonsense')).toBeNull()
     expect(parseHash('#/BSB/DEU/8/3')).toEqual({ translationId: 'BSB', book: 'DEU', chapter: 8, verse: 3 })
     expect(hashFor({ translationId: 'BSB', book: 'DEU', chapter: 8, verse: 3 })).toBe('#/BSB/DEU/8/3')
+  })
+})
+
+describe('recorded audio', () => {
+  const t = (id: string, name: string, extra: Partial<Translation> = {}): Translation =>
+    ({ id, name, englishName: name, shortName: id, language: 'eng', textDirection: 'ltr', website: '', licenseUrl: '', numberOfBooks: 66, ...extra }) as Translation
+  const all = [
+    t('ASV', 'American Standard Version'),
+    t('yv-3034', 'Berean Standard Bible', { freeId: 'BSB' }),
+    t('KJV', 'King James Version', { bibleBrainId: 'ENGKJV' }),
+    t('WEB', 'World English Bible'),
+  ]
+
+  it('knows which translations are narrated', () => {
+    expect(all.map(hasNarration)).toEqual([false, true, true, false])
+  })
+
+  it('lists narrated translations first', () => {
+    expect(groupTranslations(all, [])[0].translations.map((x) => x.id)).toEqual(['yv-3034', 'KJV', 'ASV', 'WEB'])
+  })
+
+  it('can show only narrated translations', () => {
+    expect(groupTranslations(all, [], '', true)[0].translations.map((x) => x.id)).toEqual(['yv-3034', 'KJV'])
+    expect(groupTranslations(all, [], 'world', true)).toEqual([])
   })
 })

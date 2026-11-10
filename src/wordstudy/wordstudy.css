@@ -1172,3 +1172,139 @@ a.ws-trail-item:hover {
   color: var(--accent);
   text-decoration-color: currentColor;
 }
+
+/* Verse search: how the words are matched, and links to study each word. */
+.ws-search-modes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ws-search-modes button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ws-search-modes button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ws-search-modes .count {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.ws-search-word {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.ws-search-word:hover {
+  text-decoration: underline;
+}
+
+.ws-behind + .ws-behind {
+  margin-top: 14px;
+}
+
+.ws-behind h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.ws-verse-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.ws-verse-search .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--muted);
+}
+
+/* A verse among the suggestions: its reference, then the text around the match. */
+.ws-suggestions a.ws-suggestion-verse {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.ws-suggestion-verse strong {
+  font-size: 14px;
+}
+
+.ws-suggestion-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--muted);
+  white-space: normal;
+}
+
+.ws-suggestion-text mark {
+  background: var(--accent-soft);
+  color: var(--text);
+  border-radius: 3px;
+}
+
+/* The results panel scrolls on its own (its height is fitted above the keyboard). */
+.ws-suggestions {
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ws-suggestion-section {
+  padding: 10px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ws-suggestion-section:first-child {
+  padding-top: 4px;
+}
+
+.ws-suggestions a .muted {
+  flex: none;
+  font-size: 13px;
+}
+
+@media (pointer: coarse) {
+  .ws-suggestions a {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}
+
+/* Rows that lead somewhere else ("See all … verses") may wrap rather than be cut off. */
+.ws-suggestions a > span:first-child:has(.ws-verse-search) {
+  white-space: normal;
+}
