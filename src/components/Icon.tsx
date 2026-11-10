@@ -11,6 +11,7 @@ const ICONS = {
   skipBack: 'M6 5v14M19 5l-9 7 9 7z',
   skipForward: 'M18 5v14M5 5l9 7-9 7z',
   follow: 'M12 5v14M6 13l6 6 6-6',
+  columns: 'M4 5h16v14H4zM12 5v14',
   book: 'M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5',
 } as const
 

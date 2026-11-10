@@ -5,6 +5,7 @@ import type { VerseRange } from './references'
 import { useAutoscroll } from './audio/useAutoscroll'
 import { usePlayer } from './audio/usePlayer'
 import { Icon } from './components/Icon'
+import { ParallelPane } from './components/ParallelPane'
 import { PassagePicker } from './components/PassagePicker'
 import { PlayerBar } from './components/PlayerBar'
 import type { Anchor } from './components/Popover'
@@ -14,7 +15,7 @@ import { VerseWordsPopover } from './components/VerseWords'
 import { SettingsPanel } from './components/SettingsPanel'
 import { TranslationPicker } from './components/TranslationPicker'
 import { parseChapter } from './content'
-import { useAsync } from './hooks'
+import { useAsync, useMediaQuery } from './hooks'
 import { languageKey, languageNames, toBcp47 } from './lang'
 import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, replaceRoute, useRoute } from './route'
 import { BB_NARRATOR } from './biblebrain/api'
@@ -331,6 +332,12 @@ export default function App() {
     }
   }, [parallelId, secondName, secondParsed, secondData, secondBooks, second.error, title, update])
 
+  // On phones the second translation gets the bottom half of the screen instead of a column.
+  const narrow = useMediaQuery('(max-width: 719px)')
+  const split = !!parallel && narrow
+  const firstVerseNumbers = useMemo(() => parsed?.verses.map((v) => v.number) ?? [], [parsed])
+  const secondVerseNumbers = useMemo(() => secondParsed?.verses.map((v) => v.number) ?? [], [secondParsed])
+
   const selectParallel = (t: Translation) => {
     setPanel(null)
     rememberTranslation(t.id)
@@ -370,7 +377,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className={`content${loading ? ' is-loading' : ''}${parallel ? ' wide' : ''}`}>
+      <main className={`content${loading ? ' is-loading' : ''}${parallel && !split ? ' wide' : ''}${split ? ' split' : ''}`}>
         {error ? (
           <div className="message">
             <p>Couldn't load this chapter.</p>
@@ -409,9 +416,34 @@ export default function App() {
               onVerseWords={onVerseWords}
               longPress={settings.longPressWords}
               marks={marks}
-              parallel={parallel}
+              parallel={split ? undefined : parallel}
               label={firstLabel}
             />
+            {split && parallel && (
+              <ParallelPane
+                label={parallel.label}
+                message={parallel.message}
+                book={ref.book}
+                firstVerses={firstVerseNumbers}
+                secondVerses={secondVerseNumbers}
+              >
+                {secondParsed && (
+                  <Reader
+                    secondary
+                    title=""
+                    blocks={secondParsed.blocks}
+                    footnotes={parallel.footnotes}
+                    dir={parallel.dir}
+                    lang={parallel.lang}
+                    currentIndex={-1}
+                    translationId={parallel.translationId}
+                    bookId={ref.book}
+                    books={parallel.books}
+                    related={NO_RELATED}
+                  />
+                )}
+              </ParallelPane>
+            )}
             {verseWords && (
               <VerseWordsPopover
                 verse={verseWords.verse}
@@ -495,7 +527,29 @@ export default function App() {
 
       {panel === 'passage' && <PassagePicker current={ref} onSelect={selectPassage} onClose={closePanel} />}
       {panel === 'translation' && (
-        <TranslationPicker currentId={ref.translationId} onSelect={selectTranslation} onClose={closePanel} />
+        <TranslationPicker
+          currentId={ref.translationId}
+          onSelect={selectTranslation}
+          onClose={closePanel}
+          extra={
+            <div className="side-by-side">
+              {parallelId ? (
+                <>
+                  <Icon name="columns" />
+                  <span className="side-by-side-text">
+                    Side by side with <strong>{secondName}</strong>
+                  </span>
+                  <button className="link" onClick={() => setPanel('parallel')}>Change</button>
+                  <button className="link" onClick={() => update({ parallel: null })}>Turn off</button>
+                </>
+              ) : (
+                <button className="button secondary" onClick={() => setPanel('parallel')}>
+                  <Icon name="columns" /> Add a second translation side by side
+                </button>
+              )}
+            </div>
+          }
+        />
       )}
       {panel === 'parallel' && (
         <TranslationPicker
@@ -503,6 +557,25 @@ export default function App() {
           currentId={parallelId ?? ref.translationId}
           onSelect={selectParallel}
           onClose={closePanel}
+          extra={
+            parallelId && (
+              <div className="side-by-side">
+                <Icon name="columns" />
+                <span className="side-by-side-text">
+                  Beside <strong>{firstName}</strong>
+                </span>
+                <button
+                  className="link"
+                  onClick={() => {
+                    update({ parallel: null })
+                    setPanel(null)
+                  }}
+                >
+                  Turn off side by side
+                </button>
+              </div>
+            )
+          }
         />
       )}
       {panel === 'settings' && (

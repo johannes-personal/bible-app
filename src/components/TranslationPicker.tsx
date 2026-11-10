@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { fetchTranslations, findTranslation, youVersionUnavailable, type Translation } from '../api'
 import { useAsync } from '../hooks'
 import { languageKey, preferredLanguages } from '../lang'
@@ -12,9 +12,11 @@ interface Props {
   onClose: () => void
   /** Defaults to "Translation". */
   title?: string
+  /** Shown above the list on every level (e.g. the side-by-side options). */
+  extra?: ReactNode
 }
 
-export function TranslationPicker({ currentId, onSelect, onClose, title = 'Translation' }: Props) {
+export function TranslationPicker({ currentId, onSelect, onClose, title = 'Translation', extra }: Props) {
   const { data, error, loading, retry } = useAsync('translations', fetchTranslations)
   const [query, setQuery] = useState('')
   // undefined: not chosen yet, so open on the current translation's language. null: all languages.
@@ -75,6 +77,7 @@ export function TranslationPicker({ currentId, onSelect, onClose, title = 'Trans
 
   const status = (
     <>
+      {extra}
       {loading && !data && <p className="muted center">Loading translations…</p>}
       {error && (
         <p className="muted center">

@@ -29,12 +29,15 @@ export function Sheet({ title, onClose, children, toolbar, size = 'wide' }: Prop
     const prevFocus = document.activeElement as HTMLElement | null
     if (!panel.current?.querySelector('[autofocus]')) panel.current?.focus({ preventScroll: true })
 
-    // Keep the sheet within the part of the screen the keyboard leaves visible.
+    // The on-screen keyboard covers the bottom of the screen without resizing the page. The
+    // sheet stays full height (anything shorter shows the page behind it); its list gets room
+    // at the bottom the size of the keyboard, so every result can be scrolled into view.
     const viewport = window.visualViewport
     const fit = () => {
       if (!viewport || !panel.current) return
-      panel.current.style.setProperty('--visible-height', `${viewport.height}px`)
-      panel.current.style.setProperty('--visible-top', `${viewport.offsetTop}px`)
+      const keyboard = Math.max(0, Math.round(window.innerHeight - viewport.height))
+      panel.current.style.setProperty('--keyboard', `${keyboard}px`)
+      panel.current.style.setProperty('--visible-top', `${Math.max(0, viewport.offsetTop)}px`)
     }
     fit()
     viewport?.addEventListener('resize', fit)

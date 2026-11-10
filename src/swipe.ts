@@ -37,7 +37,7 @@ export function useSwipe({ enabled, rtl, onNext, onPrevious }: {
       if (e.touches.length !== 1) return
       const t = e.touches[0]
       const target = e.target as Element
-      if (!target.closest('.content') || target.closest('.note-popover, .study-bar, input, textarea')) return
+      if (!target.closest('.content') || target.closest('.note-popover, .study-bar, .parallel-pane-head, input, textarea')) return
       if (t.clientX < EDGE || t.clientX > window.innerWidth - EDGE) return
       start = { x: t.clientX, y: t.clientY, t: Date.now() }
     }

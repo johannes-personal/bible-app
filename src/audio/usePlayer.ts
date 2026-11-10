@@ -110,10 +110,15 @@ export function usePlayer({ chapter, verses, title, settings, onEnded, onNext, o
     // oxlint-disable-next-line react/set-state-in-effect
     setState(IDLE)
 
-    if (!chapterKey) return
+    if (!chapterKey) {
+      // Moving to another chapter while listening (swipe, buttons, picker, headset): the
+      // chapter is unloaded while the next one loads, so remember to start that one.
+      if (wasPlaying) autoplayRef.current = true
+      return
+    }
     if (sameChapter && wasPlaying) {
       play(Math.max(prev.index, 0)) // switched voice mid-chapter: carry on from the same verse
-    } else if (!sameChapter && autoplayRef.current) {
+    } else if (!sameChapter && (autoplayRef.current || wasPlaying)) {
       autoplayRef.current = false
       play(0)
     }
