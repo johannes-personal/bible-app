@@ -55,6 +55,21 @@ export function ReaderSearch({ input, books, translationId, onClose }: {
           aria-autocomplete="list"
           aria-controls="ws-suggestions"
         />
+        {query && (
+          <button
+            type="button"
+            className="search-clear"
+            aria-label="Clear the search"
+            // Keep the keyboard up: don't let the tap take focus from the box.
+            onPointerDown={(e) => e.preventDefault()}
+            onClick={() => {
+              setQuery('')
+              input.current?.focus()
+            }}
+          >
+            <Icon name="close" />
+          </button>
+        )}
         <Suspense fallback={null}>
           <SearchResults
             query={query}

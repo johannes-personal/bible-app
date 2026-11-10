@@ -1818,3 +1818,34 @@ button.study-link {
   font-weight: 600;
   cursor: pointer;
 }
+
+/* Search boxes: our own clear button (the browser's doesn't show on every phone). */
+.search-clear {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: -8px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.search-clear:hover {
+  color: var(--text);
+}
+
+.search-clear .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.ws-search input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}

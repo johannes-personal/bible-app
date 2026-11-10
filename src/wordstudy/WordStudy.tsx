@@ -236,6 +236,22 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
           else if (e.key === 'ArrowDown') setOpen(true)
         }}
       />
+      {query && (
+        <button
+          type="button"
+          className="search-clear"
+          aria-label="Clear the search"
+          // Keep the keyboard up: don't let the tap take focus from the box.
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={() => {
+            setQuery('')
+            setOpen(true)
+            inputRef.current?.focus()
+          }}
+        >
+          <Icon name="close" />
+        </button>
+      )}
       {open && (
         <SearchResults
           query={query}
