@@ -48,6 +48,9 @@ interface Props {
   parallel?: ParallelText
   /** The first translation's column heading, in the parallel layout. */
   label?: ReactNode
+  /** A second translation shown on its own (the bottom pane on phones): no title, and its
+   * verses carry `data-second-verse` instead of the first translation's ids. */
+  secondary?: boolean
 }
 
 const LONG_PRESS_MS = 450
@@ -161,6 +164,7 @@ function renderer({ footnotes, translationId, bookId, books, finder, related, cu
         className={className}
         data-index={secondary ? undefined : v.index}
         data-verse={secondary ? undefined : v.number}
+        data-second-verse={secondary ? v.number : undefined}
         id={secondary ? undefined : `v${v.number}`}
         onClick={onVerseClick && index >= 0 ? () => onVerseClick(index) : undefined}
       >
@@ -218,6 +222,7 @@ export const Reader = memo(function Reader({
   marks,
   parallel,
   label,
+  secondary,
 }: Props) {
   const longPress = useLongPress(longPressEnabled ? onVerseWords : undefined)
   const finder = useMemo(() => referenceFinder(books), [books])
@@ -287,7 +292,7 @@ export const Reader = memo(function Reader({
 
   return (
     <article className={`reader${longPressEnabled ? ' long-press' : ''}`} dir={dir} lang={lang} {...longPress}>
-      <h1 className="chapter-title">{title}</h1>
+      {!secondary && <h1 className="chapter-title">{title}</h1>}
       {blocks.map((b, i) => {
         switch (b.kind) {
           case 'heading':
@@ -296,7 +301,7 @@ export const Reader = memo(function Reader({
           case 'para':
             return (
               <p key={i} className={b.poetry ? 'para poetry' : 'para'}>
-                {b.verses.map((v) => first.renderVerse(v))}
+                {b.verses.map((v) => first.renderVerse(v, secondary ? -1 : undefined))}
               </p>
             )
         }

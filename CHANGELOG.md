@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.10.0
+
+- Side by side on phones: the second translation now has the bottom half of the screen to itself. Each half scrolls on its own and the other follows, to the same verse and as far through it. Read-aloud and autoscroll keep to the top half.
+- The translation picker can add a second translation side by side, change it or turn it off; the second translation's picker can turn it off too.
+- Moving to another chapter while listening (swiping, Previous/Next, the chapter picker or a headset's skip button) starts reading the new chapter. When paused, it stays paused.
+- On phones, the translation and book pickers now stay full height with the keyboard up, instead of stopping at the top of the keyboard with the page showing through behind it; their lists leave room to scroll the last results above the keyboard.
+
 ## 1.9.0
 
 - Two translations side by side: choose a second translation in the reading settings ("Side by side"). The chapter is laid out verse by verse, so both scroll together.

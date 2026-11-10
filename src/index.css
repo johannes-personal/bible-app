@@ -616,10 +616,11 @@ button:disabled {
     padding-bottom: env(safe-area-inset-bottom);
   }
 
-  /* The pickers take the whole screen, from the top, and end where the keyboard begins, so
-     their results stay in view and can be tapped while searching. */
+  /* The pickers take the whole screen, from the top, so their results start right under the
+     search box. With the keyboard up, the list can scroll its last rows up above it. */
   .sheet-backdrop:has(.sheet-wide) {
     align-items: flex-start;
+    background: var(--surface);
   }
 
   .sheet-wide {
@@ -627,15 +628,17 @@ button:disabled {
     top: var(--visible-top, 0);
     left: 0;
     right: 0;
-    height: var(--visible-height, 100dvh);
+    height: 100%;
     max-height: none;
     border-radius: 0;
+    box-shadow: none;
     padding-top: env(safe-area-inset-top);
     animation: fade 0.15s ease-out;
   }
 
   .sheet-wide .sheet-body {
     flex: 1;
+    padding-bottom: calc(24px + var(--keyboard, 0px));
   }
 }
 
@@ -1565,4 +1568,100 @@ mark.study-word {
   .parallel-cell.secondary > .section-heading {
     display: none;
   }
+}
+
+/* Side-by-side options at the top of the translation picker. */
+.side-by-side {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 14px;
+}
+
+.side-by-side > .icon {
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+
+.side-by-side-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.side-by-side .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.side-by-side .button .icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* A lone button needs no panel behind it. */
+.side-by-side:has(> .button:only-child) {
+  padding: 0;
+  background: none;
+}
+
+/* ---------- Phones: the second translation in the bottom half ---------- */
+
+:root {
+  --pane-h: calc((100dvh - var(--header-h) - var(--player-h)) * 0.5);
+}
+
+.parallel-pane {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--player-h);
+  z-index: 9;
+  height: var(--pane-h);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.06);
+}
+
+.parallel-pane-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px 2px 26px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--sans);
+}
+
+.parallel-pane-head .parallel-close.icon-button {
+  margin-left: auto;
+}
+
+.parallel-pane-body {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 18px 40px;
+}
+
+.parallel-pane-body .parallel-message {
+  margin-top: 4px;
+}
+
+/* The first translation's text can scroll clear of the pane. */
+.content.split {
+  padding-bottom: calc(var(--player-h) + var(--pane-h) + 48px);
+}
+
+.app:has(.content.split) .follow-button {
+  bottom: calc(var(--player-h) + var(--pane-h) + 16px);
 }

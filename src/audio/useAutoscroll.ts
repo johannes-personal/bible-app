@@ -37,7 +37,11 @@ export function useAutoscroll(index: number, enabled: boolean, active: boolean) 
     const el = document.querySelector<HTMLElement>(`.reader [data-index="${i}"]`)
     if (!el) return
     const header = document.querySelector('.app-header')?.getBoundingClientRect().bottom ?? 0
-    const player = document.querySelector('.player')?.getBoundingClientRect().top ?? window.innerHeight
+    // The reading area ends at the player, or at the second translation's pane on phones.
+    const player = Math.min(
+      window.innerHeight,
+      ...[...document.querySelectorAll('.player, .parallel-pane')].map((e) => e.getBoundingClientRect().top),
+    )
     const visible = player - header
     const rect = el.getBoundingClientRect()
     // Only move when the verse leaves the comfortable reading zone, then place
