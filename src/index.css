@@ -1763,3 +1763,58 @@ mark.study-word {
   color: var(--text);
   border-radius: 3px;
 }
+
+/* ---------- Search from the reader's header ---------- */
+
+.reader-search {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reader-search .ws-search {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--muted);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.reader-search .ws-search > .icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+
+.reader-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px; /* no zoom on iOS */
+  outline: none;
+}
+
+.reader-search-cancel {
+  flex: none;
+  font-weight: 600;
+}
+
+button.study-link {
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}

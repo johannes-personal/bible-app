@@ -65,17 +65,47 @@ export function loadVerseText(): Promise<VerseText[]> {
 }
 
 /** Verses with the exact phrase. */
-export function findPhrase(verses: VerseText[], words: string[]): VerseText[] {
+/**
+ * Typing is still going on in the last word ("love one ano"): it's matched as the start of a
+ * word. True when the text ends in a letter or digit.
+ */
+export const endsMidWord = (q: string) => /[\p{L}\p{N}']$/u.test(q)
+
+/** Verses with the exact phrase (`partial`: its last word may go on, "ano" → "another"). */
+export function findPhrase(verses: VerseText[], words: string[], partial = false): VerseText[] {
   if (!words.length) return []
-  const needle = ` ${words.join(' ')} `
+  const needle = ` ${words.join(' ')}${partial ? '' : ' '}`
   return verses.filter((v) => v.words.includes(needle))
 }
 
 /** Verses with every word, each in any of its forms. */
-export function findAllWords(verses: VerseText[], forms: string[][]): VerseText[] {
+/** Verses with every word, each in any of its forms (`partial`: the last word as a beginning). */
+export function findAllWords(verses: VerseText[], forms: string[][], partial = false): VerseText[] {
   if (!forms.length) return []
-  const sets = forms.map((f) => f.map((w) => ` ${w} `))
+  const sets = forms.map((f, i) => (partial && i === forms.length - 1 ? [` ${f[0]}`] : f.map((w) => ` ${w} `)))
   return verses.filter((v) => sets.every((alternatives) => alternatives.some((w) => v.words.includes(w))))
+}
+
+/** The verse's words that match (for marking), the last one completed when it's partial. */
+export function matchedWords(v: VerseText, words: string[], forms: string[][], partial = false): string[] {
+  const phrase = ` ${words.join(' ')}${partial ? '' : ' '}`
+  const at = v.words.indexOf(phrase)
+  if (at >= 0) {
+    // The phrase as it stands in the verse, with its last word in full.
+    const end = v.words.indexOf(' ', at + phrase.length - (partial ? 0 : 1))
+    return [v.words.slice(at + 1, end < 0 ? undefined : end)]
+  }
+  const prefix = partial ? words.at(-1) : undefined
+  const completed = prefix ? v.words.trim().split(' ').filter((t) => t.startsWith(prefix)) : []
+  return [...forms.slice(0, partial ? -1 : undefined).flat(), ...completed]
+}
+
+/** The commonest way the verses complete a partial last word ("ano" → "another"). */
+export function completion(verses: VerseText[], prefix: string): string {
+  const counts = new Map<string, number>()
+  for (const v of verses)
+    for (const t of v.words.trim().split(' ')) if (t.startsWith(prefix)) counts.set(t, (counts.get(t) ?? 0) + 1)
+  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? prefix
 }
 
 /** Each word with its other forms in the BSB ("love": love, loved, loves, loving…). */
@@ -93,12 +123,14 @@ export async function formsOf(words: string[]): Promise<string[][]> {
  * How well a verse matches: the exact phrase best; otherwise all the words, the closer
  * together the better, and better still in the order searched for. 0 if a word is missing.
  */
-export function relevance(v: VerseText, words: string[], forms: string[][]): number {
-  if (words.length && v.words.includes(` ${words.join(' ')} `)) return 1000
+export function relevance(v: VerseText, words: string[], forms: string[][], partial = false): number {
+  if (words.length && v.words.includes(` ${words.join(' ')}${partial ? '' : ' '}`)) return 1000
   const tokens = v.words.trim().split(' ')
   const sets = forms.map((f) => new Set(f))
+  const last = forms.length - 1
+  const matches = (t: string, k: number) => (partial && k === last ? t.startsWith(forms[k][0]) : sets[k].has(t))
   const hits: [number, number][] = [] // [position, which word]
-  tokens.forEach((t, i) => sets.forEach((s, k) => s.has(t) && hits.push([i, k])))
+  tokens.forEach((t, i) => sets.forEach((_, k) => matches(t, k) && hits.push([i, k])))
   // The shortest stretch of the verse with every word in it.
   const need = sets.length
   const counts = new Array<number>(need).fill(0)
@@ -121,9 +153,9 @@ export function relevance(v: VerseText, words: string[], forms: string[][]): num
 }
 
 /** The verses that match best, best first (in Bible order when equally good). */
-export function bestMatches(verses: VerseText[], words: string[], forms: string[][], limit = Infinity): VerseText[] {
+export function bestMatches(verses: VerseText[], words: string[], forms: string[][], limit = Infinity, partial = false): VerseText[] {
   return verses
-    .map((v) => ({ v, score: relevance(v, words, forms) }))
+    .map((v) => ({ v, score: relevance(v, words, forms, partial) }))
     .filter((r) => r.score > 0)
     .sort((a, b) => b.score - a.score || a.v.code - b.v.code)
     .slice(0, limit)

@@ -1303,3 +1303,8 @@ a.ws-trail-item:hover {
     padding-bottom: 10px;
   }
 }
+
+/* Rows that lead somewhere else ("See all … verses") may wrap rather than be cut off. */
+.ws-suggestions a > span:first-child:has(.ws-verse-search) {
+  white-space: normal;
+}

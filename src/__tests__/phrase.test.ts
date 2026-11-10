@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bestMatches, findAllWords, findPhrase, isPhrase, parseQuery, parseVerseText, relevance, snippet, wordsOf } from '../wordstudy/phrase'
+import { bestMatches, completion, endsMidWord, findAllWords, findPhrase, isPhrase, matchedWords, parseQuery, parseVerseText, relevance, snippet, wordsOf } from '../wordstudy/phrase'
 import { parseStudyHash, studyHash } from '../route'
 
 const verses = parseVerseText(
@@ -63,5 +63,22 @@ describe('ranking verses', () => {
     expect(snippet('Jesus wept.', ['wept'])).toBe('Jesus wept.')
     const thess = 'Now about brotherly love, you do not need anyone to write to you, because you yourselves have been taught by God to love one another.'
     expect(snippet(thess, ['love', 'one', 'another'], 60)).toContain('love one another')
+  })
+})
+
+describe('words still being typed', () => {
+  it('matches the last word as a beginning', () => {
+    expect(endsMidWord('love one ano')).toBe(true)
+    expect(endsMidWord('love one ')).toBe(false)
+    expect(findPhrase(verses, ['love', 'one', 'ano'], true).map((v) => v.code)).toEqual([42013034, 61003023])
+    expect(findPhrase(verses, ['love', 'one', 'ano'])).toEqual([])
+    expect(findAllWords(verses, [['love', 'loved'], ['ano']], true).map((v) => v.code)).toEqual([42013034, 44012010, 61003023])
+  })
+
+  it('marks and completes the word', () => {
+    expect(matchedWords(verses[0], ['love', 'one', 'ano'], [['love'], ['one'], ['ano']], true)).toEqual(['love one another'])
+    expect(matchedWords(verses[1], ['devot', 'hono'], [['devot'], ['hono']], true)).toEqual(['devot', 'honoring'])
+    expect(completion(verses, 'ano')).toBe('another')
+    expect(relevance(verses[0], ['love', 'one', 'ano'], [['love'], ['one'], ['ano']], true)).toBe(1000)
   })
 })

@@ -1,16 +1,15 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChapterRef } from '../api'
 import { Icon } from '../components/Icon'
 import { isTouchScreen } from '../device'
 import { useAsync } from '../hooks'
-import { goTo, hashFor, LAST_KEY, normalizeStrongs, parseHash, parseStudyHash, studyHash, takeReplacedHash, type StudyRoute } from '../route'
+import { hashFor, LAST_KEY, parseHash, parseStudyHash, studyHash, takeReplacedHash, type StudyRoute } from '../route'
 import { useSettings } from '../settings'
 import { load as loadStored } from '../storage'
 import { clearStudyReturn, saveStudyReturn } from '../studyReturn'
 import { EnglishPage, SearchPage, WordPage } from './dashboards'
-import { bestMatches, findAllWords, findPhrase, formsOf, isPhrase, loadVerseText, parseQuery, snippet } from './phrase'
-import { splitMarked } from './highlight'
-import { decodeVerse, fold, formatCount, LANGUAGE_NAMES, loadMeta, loadNames, suggestEnglish, suggestOriginal, verseHash, type NameEntry } from './data'
+import SearchResults from './SearchResults'
+import { loadNames } from './data'
 import './wordstudy.css'
 
 // Word study: search English words or Hebrew/Greek words, and see where and how they're used.
@@ -66,20 +65,6 @@ export default function WordStudy({ route }: { route: StudyRoute }) {
 
 // -----------------------------------------------------------------------------------------------
 // Search
-
-interface Suggestion {
-  key: string
-  hash: string
-  label: ReactNode
-  hint: string
-  /** A verse: shown on two lines (reference, then the text around the match). */
-  verse?: boolean
-  /** A heading shown above it, starting a group ("Verses", "Words"). */
-  section?: string
-}
-
-/** How many verses to show among the suggestions. */
-const VERSE_SUGGESTIONS = 5
 
 /**
  * Following a link from a word's page into the reader remembers the word, so the reader can
@@ -178,13 +163,8 @@ function CurrentWord({ route }: { route: StudyRoute }) {
 function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boolean; onLeave?: () => void }) {
   const [query, setQuery] = useState(route.kind === 'english' ? route.word : route.kind === 'search' ? route.query : '')
   const [open, setOpen] = useState(false)
-  // Nothing is chosen until the arrow keys choose it, so Enter never jumps away by itself.
-  const [active, setActive] = useState(-1)
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
-  const { data: names } = useAsync('ws-names', loadNames)
   const inputRef = useRef<HTMLInputElement>(null)
   const formRef = useRef<HTMLFormElement>(null)
-  const panelRef = useRef<HTMLUListElement>(null)
 
   // Opened from the header's search button (while scrolled down on a phone).
   useEffect(() => {
@@ -202,7 +182,6 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
 
   const close = () => {
     setOpen(false)
-    setActive(-1)
     onLeave?.()
   }
 
@@ -219,162 +198,17 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
-  // Keep the panel above the on-screen keyboard.
-  useEffect(() => {
-    if (!open) return
-    const viewport = window.visualViewport
-    const fit = () => {
-      const panel = panelRef.current
-      if (!panel) return
-      const top = panel.getBoundingClientRect().top
-      const bottom = viewport ? viewport.height + viewport.offsetTop : window.innerHeight
-      panel.style.maxHeight = `${Math.max(160, bottom - top - 12)}px`
-    }
-    fit()
-    viewport?.addEventListener('resize', fit)
-    window.addEventListener('resize', fit)
-    return () => {
-      viewport?.removeEventListener('resize', fit)
-      window.removeEventListener('resize', fit)
-    }
-  }, [open, suggestions])
-
-  useEffect(() => {
-    let live = true
-    const q = query.trim()
-    // A second word means verses are wanted: start loading their text straight away.
-    if (isPhrase(q)) void loadVerseText().catch(() => {})
-    const timer = setTimeout(async () => {
-      // Exact matches first (in either language), then the most used words.
-      const ranked: { s: Suggestion; rank: number }[] = []
-      const strongs = normalizeStrongs(q)
-      if (strongs && names?.[strongs]) ranked.push({ s: originalSuggestion(strongs, names[strongs]), rank: Infinity })
-      for (const e of await suggestEnglish(q, 6)) {
-        ranked.push({
-          s: { key: `en-${e.lemma}`, hash: studyHash({ kind: 'english', word: e.lemma }), label: e.lemma, hint: `English · ${formatCount(e.total)}×` },
-          rank: (e.lemma === q.toLowerCase() ? 1e6 : 0) + e.total,
-        })
-      }
-      if (names) {
-        for (const s of suggestOriginal(names, q, 6)) {
-          if (s === strongs) continue
-          const [lemma, translit, , count] = names[s]
-          const exact = fold(translit) === fold(q) || fold(lemma) === fold(q)
-          ranked.push({ s: originalSuggestion(s, names[s]), rank: (exact ? 1e6 : 0) + count })
-        }
-      }
-      const words = ranked
-        .sort((a, b) => b.rank - a.rank)
-        .slice(0, 8)
-        .map((r, i): Suggestion => ({ ...r.s, section: i === 0 ? 'Words' : undefined }))
-      const allVerses = (count: number | 'loading' | null): Suggestion => ({
-        key: 'verses',
-        hash: studyHash({ kind: 'search', query: q }),
-        label: (
-          <span className="ws-verse-search">
-            <Icon name="search" />{' '}
-            {count === 'loading'
-              ? 'Searching verses…'
-              : count == null
-                ? `Verses with “${q}”`
-                : count === 0
-                  ? `No verse has “${q}”`
-                  : count === 1
-                    ? 'Open in word study'
-                    : `See all ${formatCount(count)} verses`}
-          </span>
-        ),
-        hint: count === 'loading' || count === 0 ? '' : 'with the Hebrew and Greek',
-      })
-      const show = (list: Suggestion[]) => {
-        if (!live) return
-        setSuggestions(list)
-        setActive(-1)
-      }
-      if (!q || strongs) return show(words)
-      // A single word: its study pages first, then the way to verses with it (names, places…).
-      if (!isPhrase(q)) return show([...words, allVerses(null)])
-      // A phrase: verses first, the best ones as soon as the text is in.
-      show([{ ...allVerses('loading'), section: 'Verses' }, ...words])
-      const { words: terms } = parseQuery(q)
-      const [meta, text, forms] = await Promise.all([loadMeta(), loadVerseText(), formsOf(terms)])
-      if (!live) return
-      // The exact phrase when it's there (as the results page starts with); otherwise the verses
-      // with all the words, closest together first.
-      const exact = findPhrase(text, terms)
-      const matching = exact.length ? exact : bestMatches(findAllWords(text, forms), terms, forms)
-      const marks = exact.length ? [terms.join(' ')] : [terms.join(' '), ...forms.flat()]
-      const verses = matching.slice(0, VERSE_SUGGESTIONS).map((v, i): Suggestion => {
-        const o = decodeVerse(v.code)
-        return {
-          key: `v${v.code}`,
-          hash: verseHash(meta, o),
-          verse: true,
-          section: i === 0 ? (exact.length ? 'Verses' : 'Closest verses') : undefined,
-          label: (
-            <>
-              <strong>
-                {meta.books[o.book].name} {o.chapter}:{o.verse}
-              </strong>
-              <span className="ws-suggestion-text">
-                {splitMarked(snippet(v.text, terms), marks).map((p, i) => (p.marked ? <mark key={i}>{p.text}</mark> : p.text))}
-              </span>
-            </>
-          ),
-          hint: '',
-        }
-      })
-      const all = allVerses(matching.length)
-      show(matching.length ? [...verses, all, ...words] : [{ ...all, section: 'Verses' }, ...words])
-    }, 100)
-    return () => {
-      live = false
-      clearTimeout(timer)
-    }
-  }, [query, names])
-
-  /** Opening a result. A verse remembers the search, so the reader marks it there. */
-  const pick = (s: Suggestion) => {
-    if (s.verse) {
-      const o = parseHash(s.hash)
-      if (o) {
-        saveStudyReturn({
-          hash: studyHash({ kind: 'search', query: query.trim() }),
-          label: { text: `“${query.trim()}”`, gloss: 'verses' },
-          word: { kind: 'search', query: query.trim() },
-          book: o.book,
-          chapter: o.chapter,
-        })
-      }
-    }
-    setOpen(false)
-    setActive(-1)
-    inputRef.current?.blur()
-  }
-
-  // Enter opens only a result chosen with the arrow keys. Otherwise it puts the keyboard away
-  // (on a phone), leaving the results to read and tap.
-  const submit = () => {
-    const s = suggestions[active]
-    if (open && s) {
-      pick(s)
-      goTo(s.hash)
-      return
-    }
-    setOpen(true)
-    if (isTouchScreen()) inputRef.current?.blur()
-  }
-
-  const showing = open && query.trim() && suggestions.length > 0
-
   return (
     <form
       ref={formRef}
       className="ws-search"
       role="search"
       onSubmit={(e) => {
+        // Enter (with no result chosen) never leaves the page; on a phone it puts the keyboard
+        // away so the results can be read and tapped.
         e.preventDefault()
-        submit()
+        setOpen(true)
+        if (isTouchScreen()) inputRef.current?.blur()
       }}
     >
       <Icon name="search" />
@@ -386,9 +220,8 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
         placeholder="A word or phrase: love, chesed, G26, love one another…"
         aria-label="Search for a word or verses"
         aria-autocomplete="list"
-        aria-expanded={!!showing}
+        aria-expanded={open}
         aria-controls="ws-suggestions"
-        aria-activedescendant={showing && active >= 0 ? `ws-s-${active}` : undefined}
         onChange={(e) => {
           setQuery(e.target.value)
           setOpen(true)
@@ -399,60 +232,22 @@ function SearchBox({ route, focus, onLeave }: { route: StudyRoute; focus?: boole
           if (!query.trim()) setTimeout(() => onLeave?.(), 150)
         }}
         onKeyDown={(e) => {
-          if (e.key === 'ArrowDown') {
-            setOpen(true)
-            setActive((a) => Math.min(a + 1, suggestions.length - 1))
-          } else if (e.key === 'ArrowUp') setActive((a) => Math.max(a - 1, -1))
-          else if (e.key === 'Escape') close()
-          else return
-          e.preventDefault()
+          if (e.key === 'Escape') close()
+          else if (e.key === 'ArrowDown') setOpen(true)
         }}
       />
-      {showing && (
-        <ul ref={panelRef} className="ws-suggestions" id="ws-suggestions" role="listbox">
-          {suggestions.map((s, i) => (
-            <Fragment key={s.key}>
-              {s.section && (
-                <li className="ws-suggestion-section" role="presentation">
-                  {s.section}
-                </li>
-              )}
-              <li id={`ws-s-${i}`} role="option" aria-selected={i === active}>
-                <a
-                  href={s.hash}
-                  className={[i === active && 'active', s.verse && 'ws-suggestion-verse'].filter(Boolean).join(' ') || undefined}
-                  onClick={() => pick(s)}
-                >
-                  {s.verse ? (
-                    s.label
-                  ) : (
-                    <>
-                      <span>{s.label}</span>
-                      <span className="muted">{s.hint}</span>
-                    </>
-                  )}
-                </a>
-              </li>
-            </Fragment>
-          ))}
-        </ul>
+      {open && (
+        <SearchResults
+          query={query}
+          input={inputRef}
+          onPicked={() => {
+            setOpen(false)
+            inputRef.current?.blur()
+          }}
+        />
       )}
     </form>
   )
-}
-
-function originalSuggestion(strongs: string, [lemma, translit, gloss, count, lang]: NameEntry): Suggestion {
-  return {
-    key: strongs,
-    hash: studyHash({ kind: 'word', strongs }),
-    label: (
-      <>
-        <span className="ws-lemma" lang={lang === 'g' ? 'grc' : 'he'}>{lemma}</span> {translit}{' '}
-        <span className="muted">“{gloss}”</span>
-      </>
-    ),
-    hint: `${LANGUAGE_NAMES[lang]} · ${formatCount(count)}×`,
-  }
 }
 
 const EXAMPLES: [string, string][] = [
