@@ -8,7 +8,7 @@ import { Icon } from './components/Icon'
 import { PassagePicker } from './components/PassagePicker'
 import { PlayerBar } from './components/PlayerBar'
 import type { Anchor } from './components/Popover'
-import { Reader } from './components/Reader'
+import { Reader, type ParallelText } from './components/Reader'
 import { StudyBar } from './components/StudyBar'
 import { VerseWordsPopover } from './components/VerseWords'
 import { SettingsPanel } from './components/SettingsPanel'
@@ -20,12 +20,13 @@ import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, replaceRo
 import { BB_NARRATOR } from './biblebrain/api'
 import { isYouVersionId } from './youversion/api'
 import { useSettings } from './settings'
+import { useSwipe } from './swipe'
 import { save } from './storage'
 import { clearStudyReturn, loadStudyReturn } from './studyReturn'
 import { rememberTranslation } from './translations'
 import { verseOffset, versesOfBsb } from './versification'
 
-type Panel = 'passage' | 'translation' | 'settings' | null
+type Panel = 'passage' | 'translation' | 'parallel' | 'settings' | null
 
 const NO_BOOKS: Book[] = []
 const NO_RELATED = new Map<number, VerseRange[]>()
@@ -60,6 +61,17 @@ export default function App() {
     return map
   }, [settings.relatedVerses, crossRefs, data])
 
+  // A second translation beside the first, when chosen (and different).
+  const parallelId = settings.parallel && settings.parallel !== ref.translationId ? settings.parallel : null
+  const parallelRef = parallelId ? { translationId: parallelId, book: ref.book, chapter: ref.chapter } : null
+  const second = useAsync(parallelRef ? hashFor(parallelRef) : null, () => fetchChapter(parallelRef!))
+  const { data: secondBooks } = useAsync(parallelId, () => fetchBooks(parallelId!))
+  const secondData =
+    second.data && second.data.book.id === ref.book && second.data.chapter.number === ref.chapter && second.data.translation.id === parallelId
+      ? second.data
+      : null
+  const secondParsed = useMemo(() => (secondData ? parseChapter(secondData.chapter.content) : null), [secondData])
+
   // Book names of the current translation, for recognising references in footnotes.
   const { data: books } = useAsync(ref.translationId, () => fetchBooks(ref.translationId))
 
@@ -67,6 +79,7 @@ export default function App() {
   // so prefer its entry over the chapter's own metadata once it has loaded.
   const { data: catalog } = useAsync('catalog', fetchTranslations)
   const translation = data && (findTranslation(catalog, data.translation.id) ?? data.translation)
+  const secondTranslation = parallelId ? (findTranslation(catalog, parallelId) ?? secondData?.translation) : null
   const hasBibleBrainAudio = !!data && Object.keys(data.thisChapterAudioLinks ?? {}).some((n) => n.startsWith(BB_NARRATOR))
 
   // Older links and saved positions use the Free Use Bible API id (e.g. "BSB") for translations
@@ -99,7 +112,7 @@ export default function App() {
     let timer: ReturnType<typeof setTimeout> | undefined
     const saveTopVerse = () => {
       const top = document.querySelector('.app-header')?.getBoundingClientRect().bottom ?? 0
-      const verses = document.querySelectorAll<HTMLElement>('.reader .verse')
+      const verses = document.querySelectorAll<HTMLElement>('.reader .verse[data-verse]')
       const first = [...verses].find((v) => v.getBoundingClientRect().bottom > top + 8)
       const verse = Number(first?.dataset.verse)
       save(LAST_KEY, verse > 1 ? { ...chapter, verse } : chapter)
@@ -142,6 +155,12 @@ export default function App() {
 
   const goNext = useCallback(() => next && navigate(next), [next])
   const goPrevious = useCallback(() => previous && navigate(previous), [previous])
+  useSwipe({
+    enabled: settings.swipeChapters && !panel,
+    rtl: data?.translation.textDirection === 'rtl',
+    onNext: goNext,
+    onPrevious: goPrevious,
+  })
 
   // Previous/Next, shown above and below the chapter.
   const chapterNav = (position: 'top' | 'bottom') => (
@@ -268,6 +287,56 @@ export default function App() {
     navigate(target)
   }
 
+  const shortName = (t: Translation | null | undefined, fallback: string) => t?.shortName || t?.name || fallback
+  const firstName = shortName(translation, ref.translationId)
+  const secondName = parallelId ? shortName(secondTranslation, parallelId) : ''
+  const firstLabel = useMemo(
+    () => (
+      <button className="parallel-pick" onClick={() => setPanel('translation')} aria-label={`Translation: ${firstName}. Change translation`}>
+        {firstName}
+        <Icon name="chevronDown" />
+      </button>
+    ),
+    [firstName],
+  )
+  const parallel = useMemo((): ParallelText | undefined => {
+    if (!parallelId) return undefined
+    return {
+      label: (
+        <>
+          <button
+            className="parallel-pick"
+            onClick={() => setPanel('parallel')}
+            aria-label={`Second translation: ${secondName}. Change it`}
+          >
+            {secondName}
+            <Icon name="chevronDown" />
+          </button>
+          <button className="icon-button parallel-close" aria-label="Close the second translation" onClick={() => update({ parallel: null })}>
+            <Icon name="close" />
+          </button>
+        </>
+      ),
+      blocks: secondParsed?.blocks ?? [],
+      footnotes: secondData?.chapter.footnotes ?? [],
+      translationId: parallelId,
+      books: secondBooks ?? NO_BOOKS,
+      dir: secondData?.translation.textDirection ?? 'ltr',
+      lang: secondData ? toBcp47(secondData.translation.language) : undefined,
+      message: second.error
+        ? `${secondName} doesn't have ${title || 'this chapter'}, or it couldn't be loaded.`
+        : !secondData
+          ? `Loading ${secondName}…`
+          : undefined,
+    }
+  }, [parallelId, secondName, secondParsed, secondData, secondBooks, second.error, title, update])
+
+  const selectParallel = (t: Translation) => {
+    setPanel(null)
+    rememberTranslation(t.id)
+    update({ parallel: t.id })
+  }
+
   const selectPassage = (r: ChapterRef) => {
     setPanel(null)
     navigate(r)
@@ -301,7 +370,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className={`content${loading ? ' is-loading' : ''}`}>
+      <main className={`content${loading ? ' is-loading' : ''}${parallel ? ' wide' : ''}`}>
         {error ? (
           <div className="message">
             <p>Couldn't load this chapter.</p>
@@ -338,7 +407,10 @@ export default function App() {
               books={books ?? NO_BOOKS}
               onVerseClick={player.state.status === 'idle' ? undefined : onVerseClick}
               onVerseWords={onVerseWords}
+              longPress={settings.longPressWords}
               marks={marks}
+              parallel={parallel}
+              label={firstLabel}
             />
             {verseWords && (
               <VerseWordsPopover
@@ -425,7 +497,23 @@ export default function App() {
       {panel === 'translation' && (
         <TranslationPicker currentId={ref.translationId} onSelect={selectTranslation} onClose={closePanel} />
       )}
-      {panel === 'settings' && <SettingsPanel settings={settings} update={update} onClose={closePanel} />}
+      {panel === 'parallel' && (
+        <TranslationPicker
+          title="Second translation"
+          currentId={parallelId ?? ref.translationId}
+          onSelect={selectParallel}
+          onClose={closePanel}
+        />
+      )}
+      {panel === 'settings' && (
+        <SettingsPanel
+          settings={settings}
+          update={update}
+          onClose={closePanel}
+          parallelName={parallelId ? secondName : null}
+          onChooseParallel={() => setPanel('parallel')}
+        />
+      )}
     </div>
   )
 }

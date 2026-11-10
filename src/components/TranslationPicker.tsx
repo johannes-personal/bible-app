@@ -10,9 +10,11 @@ interface Props {
   currentId: string
   onSelect: (t: Translation) => void
   onClose: () => void
+  /** Defaults to "Translation". */
+  title?: string
 }
 
-export function TranslationPicker({ currentId, onSelect, onClose }: Props) {
+export function TranslationPicker({ currentId, onSelect, onClose, title = 'Translation' }: Props) {
   const { data, error, loading, retry } = useAsync('translations', fetchTranslations)
   const [query, setQuery] = useState('')
   // undefined: not chosen yet, so open on the current translation's language. null: all languages.
@@ -110,7 +112,7 @@ export function TranslationPicker({ currentId, onSelect, onClose }: Props) {
   // First level: languages, or translations matching a search across all languages.
   return (
     <Sheet
-      title="Translation"
+      title={title}
       onClose={onClose}
       toolbar={
         <input

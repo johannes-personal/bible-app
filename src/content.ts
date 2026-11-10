@@ -86,3 +86,27 @@ export function parseChapter(items: ChapterItem[]): ParsedChapter {
   }
   return { blocks, verses }
 }
+
+/** A verse with the headings and psalm titles that come before it, and whether it's poetry. */
+export interface VerseEntry {
+  verse: VerseBlock
+  poetry: boolean
+  before: Exclude<Block, { kind: 'para' }>[]
+}
+
+/** The chapter as a list of verses, for laying two translations out verse by verse. */
+export function verseEntries(blocks: Block[]): VerseEntry[] {
+  const out: VerseEntry[] = []
+  let before: VerseEntry['before'] = []
+  for (const b of blocks) {
+    if (b.kind !== 'para') {
+      before.push(b)
+      continue
+    }
+    for (const verse of b.verses) {
+      out.push({ verse, poetry: b.poetry, before })
+      before = []
+    }
+  }
+  return out
+}

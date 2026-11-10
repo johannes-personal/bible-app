@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.9.0
+
+- Two translations side by side: choose a second translation in the reading settings ("Side by side"). The chapter is laid out verse by verse, so both scroll together.
+  - On wider screens they sit in two columns, under headings that stay in view; tap either heading to change that translation, or ✕ to close the second.
+  - On phones each verse is followed by the same verse in the second translation, set in from the left.
+  - Psalms whose titles are numbered as verses in one translation and not the other (such as the NBG 1951 beside the BSB) are lined up, and a verse one translation numbers differently stays next to its neighbour.
+  - Read-aloud, verse links, related verses and word study marks follow the first translation; the second has its own footnotes.
+- Swipe left or right on a touch screen to go to the next or previous chapter (the other way round in right-to-left translations). The text follows your finger; vertical scrolling, short swipes, swipes from the screen's edge and text selection are left alone. It can be turned off in the reading settings.
+- Fonts: choose Serif (Literata, as before), Classic (EB Garamond), Sans-serif (Inter) or Legible (Atkinson Hyperlegible) in the reading settings. Text size stays comparable across them.
+- Pressing and holding a verse for its Hebrew or Greek words is now a setting, off by default, so pressing and holding selects text as usual. Tapping a verse number still shows the words.
+
 ## 1.8.0
 
 - From the reader to word study: tap a verse number, or press and hold a verse, to see its Hebrew or Greek words in the order of the English, as in word study. Each word's English links to its English study page, and the original word to its own page. This works in any translation, because it goes by verse; the words come from the BSB interlinear.
