@@ -1849,3 +1849,101 @@ button.study-link {
   -webkit-appearance: none;
   appearance: none;
 }
+
+/* ---------- Reading without a connection ---------- */
+
+.offline-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: 14px;
+}
+
+.offline-row.plain {
+  padding: 0;
+  background: none;
+}
+
+.offline-row > .icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.offline-row .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.offline-row .button .icon,
+.offline-install .icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+
+.offline-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.offline-progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  margin-top: 6px;
+  accent-color: var(--accent);
+}
+
+.saved-offline {
+  color: var(--muted);
+}
+
+.notice .icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+}
+
+.offline-saved {
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.offline-saved li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.offline-saved li span {
+  flex: 1;
+  min-width: 0;
+}
+
+.offline-saved .icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.offline-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ws-home .offline-row {
+  margin-top: 20px;
+}

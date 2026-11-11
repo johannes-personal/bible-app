@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { FONTS, loadFont, type Settings, type Theme, type UpdateSettings } from '../settings'
 import { Icon } from './Icon'
+import { OfflineSettings } from './Offline'
 import { Sheet } from './Sheet'
 
 interface Props {
@@ -159,6 +160,8 @@ export function SettingsPanel({ settings, update, onClose, parallelName, onChoos
             Swipe to turn the chapter <span className="muted">(on touch screens)</span>
           </span>
         </label>
+
+        <OfflineSettings />
       </div>
     </Sheet>
   )

@@ -2,11 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { fetchBooks, fetchChapter, fetchCrossRefs, fetchTranslations, findTranslation, type Book, type ChapterRef, type Translation } from './api'
 import { relatedVerses } from './crossrefs'
-import type { VerseRange } from './references'
+import { referenceLabel, type VerseRange } from './references'
 import { useAutoscroll } from './audio/useAutoscroll'
 import { usePlayer } from './audio/usePlayer'
 import { Icon } from './components/Icon'
 import { ParallelPane } from './components/ParallelPane'
+import { SaveTranslation } from './components/Offline'
 import { PassagePicker } from './components/PassagePicker'
 import { PlayerBar } from './components/PlayerBar'
 import { ReaderSearch } from './components/ReaderSearch'
@@ -17,7 +18,7 @@ import { VerseWordsPopover } from './components/VerseWords'
 import { SettingsPanel } from './components/SettingsPanel'
 import { TranslationPicker } from './components/TranslationPicker'
 import { parseChapter } from './content'
-import { useAsync, useMediaQuery } from './hooks'
+import { useAsync, useMediaQuery, useOnline } from './hooks'
 import { languageKey, languageNames, toBcp47 } from './lang'
 import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, replaceRoute, useRoute } from './route'
 import { BB_NARRATOR } from './biblebrain/api'
@@ -26,7 +27,7 @@ import { useSettings } from './settings'
 import { useSwipe } from './swipe'
 import { save } from './storage'
 import { clearStudyReturn, loadStudyReturn } from './studyReturn'
-import { rememberTranslation } from './translations'
+import { rememberedTranslationName, rememberTranslation, rememberTranslationName } from './translations'
 import { verseOffset, versesOfBsb } from './versification'
 
 type Panel = 'passage' | 'translation' | 'parallel' | 'settings' | null
@@ -38,6 +39,7 @@ export default function App() {
   const ref = useRoute()
   const [settings, update] = useSettings()
   const [panel, setPanel] = useState<Panel>(null)
+  const online = useOnline()
   const closePanel = useCallback(() => setPanel(null), [])
 
   // Keyed by chapter only, so following a reference within the chapter doesn't reload it.
@@ -45,7 +47,19 @@ export default function App() {
   const parsed = useMemo(() => (data ? parseChapter(data.chapter.content) : null), [data])
   const verseTexts = useMemo(() => parsed?.verses.map((v) => v.text) ?? [], [parsed])
 
-  const title = data ? `${data.book.name} ${data.chapter.number}` : ''
+  // Back online after a chapter couldn't be loaded: try it again.
+  useEffect(() => {
+    if (online && error) retry()
+    // Only when the connection returns, not on every failed attempt.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [online])
+
+  // A chapter that couldn't be loaded leaves the one before it in `data`: name what was asked for.
+  const title = error
+    ? referenceLabel({ book: ref.book, chapter: ref.chapter, verseStart: 1, verseEnd: 1 }).replace(/:1$/, '')
+    : data
+      ? `${data.book.name} ${data.chapter.number}`
+      : ''
 
   // Cross references for the chapter; useAsync keeps the previous chapter's while loading,
   // so only use them once they match the chapter on screen.
@@ -81,7 +95,10 @@ export default function App() {
   // The merged catalogue names shared translations the way YouVersion does (e.g. "SKB"),
   // so prefer its entry over the chapter's own metadata once it has loaded.
   const { data: catalog } = useAsync('catalog', fetchTranslations)
-  const translation = data && (findTranslation(catalog, data.translation.id) ?? data.translation)
+  // (After a failed load, the translation asked for rather than the one still in `data`.)
+  const translation =
+    data && !error ? (findTranslation(catalog, data.translation.id) ?? data.translation) : (findTranslation(catalog, ref.translationId) ?? null)
+  const translationName = translation?.shortName || translation?.name || rememberedTranslationName(ref.translationId) || ref.translationId
   const secondTranslation = parallelId ? (findTranslation(catalog, parallelId) ?? secondData?.translation) : null
   const hasBibleBrainAudio = !!data && Object.keys(data.thisChapterAudioLinks ?? {}).some((n) => n.startsWith(BB_NARRATOR))
 
@@ -105,8 +122,12 @@ export default function App() {
   }, [data, loading])
 
   useEffect(() => {
-    if (data && !loading) document.title = `${title} · ${translation?.shortName || translation?.name}`
-  }, [data, loading, title, translation])
+    if (!data || loading || error) return
+    document.title = `${title} · ${translationName}`
+    rememberTranslationName(ref.translationId, translationName)
+    // `ref` is the route that loaded `data`.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, loading, error, title, translationName])
 
   // Remember the reading position as the chapter plus the first verse at the top of the screen.
   useEffect(() => {
@@ -316,7 +337,7 @@ export default function App() {
   }
 
   const shortName = (t: Translation | null | undefined, fallback: string) => t?.shortName || t?.name || fallback
-  const firstName = shortName(translation, ref.translationId)
+  const firstName = translationName
   const secondName = parallelId ? shortName(secondTranslation, parallelId) : ''
   const firstLabel = useMemo(
     () => (
@@ -384,27 +405,27 @@ export default function App() {
             <ReaderSearch input={searchInput} books={books ?? undefined} translationId={ref.translationId} onClose={closeSearch} />
           ) : (
             <>
-          <button className="pill passage-pill" onClick={() => setPanel('passage')} aria-label="Choose book and chapter">
-            <span className="pill-text">{title || '…'}</span>
-            <Icon name="chevronDown" />
-          </button>
-          <button
-            className="pill"
-            onClick={() => setPanel('translation')}
-            title={translation?.name}
-            aria-label={`Translation: ${translation?.name ?? ref.translationId}. Change translation`}
-          >
-            <span className="pill-text">{translation?.shortName || translation?.name || ref.translationId}</span>
-            <Icon name="chevronDown" />
-          </button>
-          <span className="spacer" />
-          <button className="study-link" onClick={openSearch} aria-label="Search" title="Search passages, verses and words (/)">
-            <Icon name="search" />
-            <span>Search</span>
-          </button>
-          <button className="icon-button" onClick={() => setPanel('settings')} aria-label="Reading settings">
-            <span className="aa" aria-hidden="true">Aa</span>
-          </button>
+              <button className="pill passage-pill" onClick={() => setPanel('passage')} aria-label="Choose book and chapter">
+                <span className="pill-text">{title || '…'}</span>
+                <Icon name="chevronDown" />
+              </button>
+              <button
+                className="pill"
+                onClick={() => setPanel('translation')}
+                title={translation?.name}
+                aria-label={`Translation: ${translation?.name ?? ref.translationId}. Change translation`}
+              >
+                <span className="pill-text">{translationName}</span>
+                <Icon name="chevronDown" />
+              </button>
+              <span className="spacer" />
+              <button className="study-link" onClick={openSearch} aria-label="Search" title="Search passages, verses and words (/)">
+                <Icon name="search" />
+                <span>Search</span>
+              </button>
+              <button className="icon-button" onClick={() => setPanel('settings')} aria-label="Reading settings">
+                <span className="aa" aria-hidden="true">Aa</span>
+              </button>
             </>
           )}
         </div>
@@ -413,8 +434,21 @@ export default function App() {
       <main className={`content${loading ? ' is-loading' : ''}${parallel && !split ? ' wide' : ''}${split ? ' split' : ''}`}>
         {error ? (
           <div className="message">
-            <p>Couldn't load this chapter.</p>
-            <p className="muted">{error.message}</p>
+            {online ? (
+              <>
+                <p>Couldn't load this chapter.</p>
+                <p className="muted">{error.message}</p>
+              </>
+            ) : (
+              <>
+                <p>You're offline, and this chapter isn't saved on this device.</p>
+                <p className="muted">
+                  {isYouVersionId(ref.translationId)
+                    ? 'This translation can only be read with a connection. Free translations, such as the BSB, can be saved for reading offline from the translation list.'
+                    : 'With a connection, a translation can be saved for reading offline from the translation list.'}
+                </p>
+              </>
+            )}
             <div className="message-actions">
               <button className="button" onClick={retry}>Try again</button>
               {isYouVersionId(ref.translationId) && (
@@ -565,22 +599,25 @@ export default function App() {
           onSelect={selectTranslation}
           onClose={closePanel}
           extra={
-            <div className="side-by-side">
-              {parallelId ? (
-                <>
-                  <Icon name="columns" />
-                  <span className="side-by-side-text">
-                    Side by side with <strong>{secondName}</strong>
-                  </span>
-                  <button className="link" onClick={() => setPanel('parallel')}>Change</button>
-                  <button className="link" onClick={() => update({ parallel: null })}>Turn off</button>
-                </>
-              ) : (
-                <button className="button secondary" onClick={() => setPanel('parallel')}>
-                  <Icon name="columns" /> Add a second translation side by side
-                </button>
-              )}
-            </div>
+            <>
+              <div className="side-by-side">
+                {parallelId ? (
+                  <>
+                    <Icon name="columns" />
+                    <span className="side-by-side-text">
+                      Side by side with <strong>{secondName}</strong>
+                    </span>
+                    <button className="link" onClick={() => setPanel('parallel')}>Change</button>
+                    <button className="link" onClick={() => update({ parallel: null })}>Turn off</button>
+                  </>
+                ) : (
+                  <button className="button secondary" onClick={() => setPanel('parallel')}>
+                    <Icon name="columns" /> Add a second translation side by side
+                  </button>
+                )}
+              </div>
+              <SaveTranslation translation={translation} />
+            </>
           }
         />
       )}

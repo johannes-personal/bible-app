@@ -21,6 +21,7 @@ import {
 import { addBibleBrain } from './biblebrain/merge'
 import { fetchYvBooks, fetchYvCatalog, fetchYvChapter, isYouVersionId } from './youversion/api'
 import { mergeCatalogs } from './youversion/merge'
+import { savedFreeId } from './offline/saved'
 import { toChapterCrossRefs, type ChapterCrossRefs, type CrossRef } from './crossrefs'
 
 const BASE = 'https://bible.helloao.org'
@@ -172,7 +173,9 @@ const entryOf = (translationId: string) =>
     (list) => findTranslation(list, translationId),
     () => undefined,
   )
-const freeIdOf = (translationId: string) => entryOf(translationId).then((t) => t?.freeId)
+// Offline the catalogue lacks YouVersion's part, so it can't tell which free translation a
+// YouVersion id stands for; a translation saved for offline reading remembers that itself.
+const freeIdOf = (translationId: string) => entryOf(translationId).then((t) => t?.freeId ?? savedFreeId(translationId))
 
 const fetchFreeBooks = (id: string) => getJson<{ books: Book[] }>(`/api/${id}/books.json`).then((d) => d.books)
 const fetchFreeChapter = (id: string, ref: ChapterRef) => getJson<ChapterData>(`/api/${id}/${ref.book}/${ref.chapter}.json`)
