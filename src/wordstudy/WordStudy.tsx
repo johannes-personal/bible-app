@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChapterRef } from '../api'
 import { Icon } from '../components/Icon'
+import { SaveWordStudy } from '../components/Offline'
 import { isTouchScreen } from '../device'
 import { useAsync } from '../hooks'
 import { hashFor, LAST_KEY, parseHash, parseStudyHash, studyHash, takeReplacedHash, type StudyRoute } from '../route'
@@ -294,6 +295,7 @@ function Home() {
           <a key={label} className="pill" href={hash}>{label}</a>
         ))}
       </div>
+      <SaveWordStudy />
     </section>
   )
 }

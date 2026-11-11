@@ -12,6 +12,8 @@ const ICONS = {
   skipForward: 'M18 5v14M5 5l9 7-9 7z',
   follow: 'M12 5v14M6 13l6 6 6-6',
   headphones: 'M4 16v-4a8 8 0 0 1 16 0v4M4 16a2 2 0 0 1 2-2h1v6H6a2 2 0 0 1-2-2zM20 16a2 2 0 0 0-2-2h-1v6h1a2 2 0 0 0 2-2z',
+  download: 'M12 4v11M7 10.5l5 5 5-5M5 20h14',
+  check: 'M5 12.5l4.5 4.5L19 7',
   columns: 'M4 5h16v14H4zM12 5v14',
   book: 'M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5',
 } as const

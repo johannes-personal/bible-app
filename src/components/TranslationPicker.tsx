@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { fetchTranslations, findTranslation, youVersionUnavailable, type Translation } from '../api'
-import { useAsync } from '../hooks'
+import { useAsync, useOnline } from '../hooks'
+import { useOffline } from '../offline/store'
 import { languageKey, preferredLanguages } from '../lang'
 import { load, save } from '../storage'
 import { groupTranslations, hasNarration, partitionLanguages, recentTranslationIds, type LanguageGroup } from '../translations'
@@ -42,10 +43,16 @@ export function TranslationPicker({ currentId, onSelect, onClose, title = 'Trans
     </button>
   )
 
+  // Translations saved on the device for reading offline (by their Free Use Bible API id).
+  const { saved } = useOffline()
+  const isSaved = (t: Translation) => !!saved.translations[t.freeId ?? t.id]
+  const online = useOnline()
+
   const preferred = useMemo(() => preferredLanguages(), [])
   const current = findTranslation(data, currentId)
   const currentLanguage = current && languageKey(current.language)
-  const language = chosenLanguage === undefined ? currentLanguage : chosenLanguage
+  // Offline it opens on the overview, which lists what's saved on the device first.
+  const language = chosenLanguage === undefined ? (online ? currentLanguage : null) : chosenLanguage
 
   const allGroups = useMemo(() => (data ? groupTranslations(data, preferred, '', audioOnly) : []), [data, preferred, audioOnly])
   const searchGroups = useMemo(
@@ -61,6 +68,14 @@ export function TranslationPicker({ currentId, onSelect, onClose, title = 'Trans
     const recent = recentTranslationIds().map((id) => findTranslation(data, id))
     return [...new Set(recent)].filter((t): t is Translation => !!t && (!audioOnly || hasNarration(t)))
   }, [data, audioOnly])
+
+  const savedList = useMemo(
+    () =>
+      (data ?? [])
+        .filter((t) => !!saved.translations[t.freeId ?? t.id] && (!audioOnly || hasNarration(t)))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [data, saved, audioOnly],
+  )
 
   const row = (t: Translation) => (
     <li key={t.id}>
@@ -78,6 +93,11 @@ export function TranslationPicker({ currentId, onSelect, onClose, title = 'Trans
         {hasNarration(t) && (
           <span className="narrated" title="Recorded audio Bible" aria-label="Recorded audio Bible" role="img">
             <Icon name="headphones" />
+          </span>
+        )}
+        {isSaved(t) && (
+          <span className="narrated saved-offline" title="Saved for reading offline" aria-label="Saved for reading offline" role="img">
+            <Icon name="download" />
           </span>
         )}
         <span className="badge">{t.shortName || t.id}</span>
@@ -100,6 +120,13 @@ export function TranslationPicker({ currentId, onSelect, onClose, title = 'Trans
     </div>
   )
 
+  const savedSection = savedList.length > 0 && (
+    <section>
+      <h3 className="group-label">Saved for reading offline</h3>
+      <ul className="list">{savedList.map(row)}</ul>
+    </section>
+  )
+
   const status = (
     <>
       {extra}
@@ -114,7 +141,13 @@ export function TranslationPicker({ currentId, onSelect, onClose, title = 'Trans
           Showing only translations with a recorded audio Bible. Others can still be read aloud with your device's voice.
         </p>
       )}
-      {data && !loading && youVersionUnavailable() && (
+      {data && !loading && !online && (
+        <p className="notice">
+          You're offline. Translations saved on this device <Icon name="download" /> can be read, as can chapters of other free
+          translations you've opened before.
+        </p>
+      )}
+      {data && !loading && online && youVersionUnavailable() && (
         <p className="notice">
           YouVersion translations (such as NIV) couldn't be loaded.{' '}
           <button className="link" onClick={retry}>Try again</button>
@@ -184,12 +217,14 @@ export function TranslationPicker({ currentId, onSelect, onClose, title = 'Trans
         </>
       ) : (
         <>
+          {!online && savedSection}
           {recent.length > 0 && (
             <section>
               <h3 className="group-label">Recent</h3>
               <ul className="list">{recent.map(row)}</ul>
             </section>
           )}
+          {online && savedSection}
           {suggested.length > 0 && (
             <section>
               <h3 className="group-label">Suggested languages</h3>

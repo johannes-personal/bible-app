@@ -112,6 +112,7 @@ export function loadFont(font: (typeof FONTS)[number]) {
   const link = document.createElement('link')
   link.id = id
   link.rel = 'stylesheet'
+  link.crossOrigin = 'anonymous' // so the copy kept for offline use is a readable one
   link.href = `https://fonts.googleapis.com/css2?family=${font.googleFamily}&display=swap`
   document.head.appendChild(link)
 }

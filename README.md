@@ -32,6 +32,18 @@ The word study pages (`#/study`) use an index built from the [Berean Standard Bi
 - `e/*.json`: per first letter, each English word with its forms and the Strong's numbers it translates.
 - `l/*.json`: the same words' lexicon entries (part of speech, pronunciation, root, Strong's definition, KJV renderings, and the STEPBible senses with verse references).
 
+## Installing and reading offline
+
+The app can be added to a phone's home screen (or installed on a computer), where it opens full screen, and it keeps working without a connection:
+
+- `public/manifest.webmanifest` and the icons in `public/icons/` (made by `scripts/make-icons.mjs`) describe the installed app.
+- `pwa/sw.js` is the service worker. The build (`vite.config.ts`) writes it to `dist/sw.js` with the list of the app's own files, which it keeps on the device, so the app opens offline. A new build installs alongside the old one and takes over the next time the app is opened.
+- Whatever the app reads from the Free Use Bible API (chapters, book lists, cross references, the interlinear), the word study data and the fonts are kept as they are used, and served from the device first.
+- A whole translation can be saved from the translation list: its `complete.json` is fetched once and split into the per-chapter answers the app asks for (`src/offline/`). The word study data can be saved from its start page (the build lists its files in `word-study/files.json`).
+- Nothing from `/api/` (YouVersion, Bible Brain) is kept: their licences don't clearly allow storing the text, so those translations need a connection. `KEEP_API` in `pwa/sw.js` is the one switch for that.
+
+The service worker only runs in the built app (`npm run build && npm run preview`), not on the development server.
+
 ## Development
 
 ```sh

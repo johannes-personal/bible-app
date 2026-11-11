@@ -13,6 +13,20 @@ export function rememberTranslation(id: string) {
   save(RECENT_KEY, [id, ...recent].slice(0, 5))
 }
 
+const NAMES_KEY = 'bible:translation-names'
+
+/**
+ * Short names of the translations read lately, by id: for naming one when its details can't be
+ * loaded (offline, a YouVersion translation is only known by an id such as "yv-111").
+ */
+export function rememberTranslationName(id: string, name: string | undefined) {
+  if (!name) return
+  const names = load<[string, string][]>(NAMES_KEY, []).filter(([i]) => i !== id)
+  save(NAMES_KEY, [[id, name], ...names].slice(0, 8))
+}
+
+export const rememberedTranslationName = (id: string) => load<[string, string][]>(NAMES_KEY, []).find(([i]) => i === id)?.[1]
+
 export interface LanguageGroup {
   /** Language key shared by both sources, e.g. "sv" (see `languageKey`). */
   language: string

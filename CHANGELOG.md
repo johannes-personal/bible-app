@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.0
+
+- The app can be put on the home screen (iPhone: Share, then "Add to Home Screen"; Android and computers: the browser's "Install"), where it opens full screen with its own icon, without the browser's bars. The reading settings say how.
+- It works without a connection:
+  - The app itself opens offline.
+  - Chapters of free translations stay readable once they've been opened, along with their related verses and Hebrew and Greek words.
+  - A free translation can be saved in full: in the translation list, "Save … for reading offline" (the BSB is about 2 MB to download). Saved translations are marked in the list and come first when offline; the reading settings list what's saved, with a way to remove it.
+  - Word study can be saved for use offline from its start page (about 30 MB with the BSB's text): searching, the word pages and the verses then work without a connection. A verse's Hebrew or Greek words still need one the first time that chapter's are looked at.
+  - Translations from YouVersion (such as the NIV) and Bible Brain still need a connection, as their licences don't clearly allow keeping the text on the device; recorded narration is streamed as before. Reading aloud with the device's voice works offline.
+- Offline, a chapter that isn't on the device says so (and how to save a translation), and loads by itself when the connection is back. The header names the chapter and translation that were asked for, also when they couldn't be loaded.
+- Chapters, book lists and word study data that have been loaded before now appear at once, and are refreshed in the background.
+
 ## 1.11.0
 
 - Recorded audio Bibles are marked in the translation picker with a headphones symbol, and come first: first within each language, and in search results languages that have one come first too. A "With audio" filter (remembered) shows only those. For now that's the Berean Standard Bible and the Accessible Ancients Bible; Bible Brain's recordings join once its key works.
