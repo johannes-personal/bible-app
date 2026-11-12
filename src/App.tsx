@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
-import { fetchBooks, fetchChapter, fetchCrossRefs, fetchTranslations, findTranslation, type Book, type ChapterRef, type Translation } from './api'
+import {
+  fetchBooks,
+  fetchChapter,
+  fetchCrossRefs,
+  fetchNarration,
+  fetchTranslations,
+  findTranslation,
+  withNarration,
+  type Book,
+  type ChapterRef,
+  type Translation,
+} from './api'
 import { relatedVerses } from './crossrefs'
 import { referenceLabel, type VerseRange } from './references'
 import { useAutoscroll } from './audio/useAutoscroll'
@@ -18,7 +29,7 @@ import { VerseWordsPopover } from './components/VerseWords'
 import { SettingsPanel } from './components/SettingsPanel'
 import { TranslationPicker } from './components/TranslationPicker'
 import { parseChapter } from './content'
-import { useAsync, useMediaQuery, useOnline } from './hooks'
+import { useAsync, useElapsed, useMediaQuery, useOnline } from './hooks'
 import { languageKey, languageNames, toBcp47 } from './lang'
 import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, replaceRoute, useRoute } from './route'
 import { BB_NARRATOR } from './biblebrain/api'
@@ -43,8 +54,26 @@ export default function App() {
   const closePanel = useCallback(() => setPanel(null), [])
 
   // Keyed by chapter only, so following a reference within the chapter doesn't reload it.
-  const { data, error, loading, retry } = useAsync(hashFor(chapterOf(ref)), () => fetchChapter(chapterOf(ref)))
+  const chapterKey = hashFor(chapterOf(ref))
+  const { data, error, loading, retry } = useAsync(chapterKey, () => fetchChapter(chapterOf(ref)))
   const parsed = useMemo(() => (data ? parseChapter(data.chapter.content) : null), [data])
+
+  // The narration other sources have for the chapter takes the list of translations, which can
+  // be slow the first time, so the text doesn't wait for it. The player does, briefly: so it
+  // starts with the recorded narration when there is one, but isn't held up for long.
+  const shown = !loading && !error ? data : null
+  const narrationKey = shown ? `narration ${chapterKey}` : null
+  const narration = useAsync(narrationKey, () =>
+    fetchNarration(chapterOf(ref), shown!.numberOfVerses).then((found) => ({ key: chapterKey, found })),
+  )
+  const narrationKnown = !narration.loading && !narration.error && narration.data?.key === chapterKey
+  const waitedForNarration = useElapsed(narrationKey, 2500)
+  const extraNarration = narrationKnown ? narration.data!.found : null
+  /** The chapter for the player: its text, with all the narration found for it. */
+  const playable = useMemo(
+    () => (shown && (narrationKnown || waitedForNarration) ? withNarration(shown, extraNarration) : null),
+    [shown, narrationKnown, waitedForNarration, extraNarration],
+  )
   const verseTexts = useMemo(() => parsed?.verses.map((v) => v.text) ?? [], [parsed])
 
   // Back online after a chapter couldn't be loaded: try it again.
@@ -100,7 +129,7 @@ export default function App() {
     data && !error ? (findTranslation(catalog, data.translation.id) ?? data.translation) : (findTranslation(catalog, ref.translationId) ?? null)
   const translationName = translation?.shortName || translation?.name || rememberedTranslationName(ref.translationId) || ref.translationId
   const secondTranslation = parallelId ? (findTranslation(catalog, parallelId) ?? secondData?.translation) : null
-  const hasBibleBrainAudio = !!data && Object.keys(data.thisChapterAudioLinks ?? {}).some((n) => n.startsWith(BB_NARRATOR))
+  const hasBibleBrainAudio = Object.keys((playable ?? data)?.thisChapterAudioLinks ?? {}).some((n) => n.startsWith(BB_NARRATOR))
 
   // Older links and saved positions use the Free Use Bible API id (e.g. "BSB") for translations
   // that now come from YouVersion; switch those to the YouVersion id once the catalogue knows it.
@@ -199,7 +228,7 @@ export default function App() {
   )
 
   const player = usePlayer({
-    chapter: loading ? null : data,
+    chapter: playable,
     verses: verseTexts,
     title,
     settings,
@@ -579,14 +608,14 @@ export default function App() {
         </button>
       )}
 
-      {data && (
+      {data && !error && (
         <PlayerBar
           player={player}
           settings={settings}
           update={update}
           verseCount={parsed?.verses.length ?? 0}
           languageName={(translation && languageNames(languageKey(translation.language)).english) || translation?.languageEnglishName || 'this language'}
-          loading={loading}
+          loading={loading || (!!shown && !playable)}
           onPrevious={previous ? goPrevious : undefined}
           onNext={next ? goNext : undefined}
         />

@@ -21,12 +21,15 @@ function keepWhatWasLoaded() {
   const since = performance.now()
   const kept = /^https:\/\/(bible\.helloao\.org|fonts\.googleapis\.com|fonts\.gstatic\.com)\//
   const wordStudy = new URL('word-study/', document.baseURI).href
+  // The lists of translations from the app's own /api/ (see pwa/sw.js).
+  const api = new URL('api/', document.baseURI).href
+  const isCatalogue = (url: string) => url.startsWith(api) && new URL(url).searchParams.has('catalog')
   const asked = new Set<string>()
   const sweep = () => {
     for (const { name: url, startTime } of performance.getEntriesByType('resource')) {
       // Requests from before the service worker took over; later ones went through it anyway.
       if (startTime >= since || asked.has(url)) continue
-      if ((!kept.test(url) && !url.startsWith(wordStudy)) || url.endsWith('/complete.json')) continue
+      if ((!kept.test(url) && !url.startsWith(wordStudy) && !isCatalogue(url)) || url.endsWith('/complete.json')) continue
       asked.add(url)
       void fetch(url).catch(() => {})
     }
