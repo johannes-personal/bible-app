@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.1
+
+- Faster start: the chapter shows as soon as its text arrives (about a second), instead of waiting for the list of all translations. YouVersion's part of that list takes several seconds when it isn't cached, which made the first visit after each update take around ten seconds.
+  - Recorded narration that comes from another source than the text (such as the BSB's, when it's read from YouVersion) is added once the list is in. The player waits for that briefly, so it still starts with the narration.
+- The lists of translations (names and abbreviations, no Bible text) are now kept on the device and refreshed in the background, so the translation list opens at once on later visits, also offline.
+- When a chapter can't be loaded, the player no longer stays on the chapter before.
+
 ## 1.12.0
 
 - The app can be put on the home screen (iPhone: Share, then "Add to Home Screen"; Android and computers: the browser's "Install"), where it opens full screen with its own icon, without the browser's bars. The reading settings say how.

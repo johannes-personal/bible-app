@@ -7,9 +7,12 @@
 //   interlinear), the word study data and the fonts, each as it is used. The page also puts
 //   whole translations and the word study data here when the reader asks (src/offline/store.ts).
 //
-// What is never kept: anything from /api/ (YouVersion and Bible Brain). Their licences don't
-// clearly allow storing the text, so those translations need a connection. To change that,
-// see KEEP_API below.
+// - The lists of translations from /api/ (YouVersion's and Bible Brain's catalogues: names and
+//   abbreviations, no Bible text), so the app doesn't wait for them each time it starts.
+//
+// What is never kept: Bible text from /api/ (YouVersion and Bible Brain). Their licences don't
+// clearly allow storing it, so those translations need a connection. To change that, see
+// KEEP_API below.
 
 const VERSION = '__VERSION__'
 const PRECACHE = /* __PRECACHE__ */ []
@@ -18,7 +21,7 @@ const SHELL = `bible-shell-${VERSION}`
 /** Also written by the page: keep the name in step with src/offline/saved.ts. */
 const DATA = 'bible-data-v1'
 const FONTS = 'bible-fonts-v1'
-/** Whether answers from /api/ (YouVersion, Bible Brain) may be kept for offline reading. */
+/** Whether Bible text from /api/ (YouVersion, Bible Brain) may be kept for offline reading. */
 const KEEP_API = false
 
 const SCOPE = self.registration.scope
@@ -66,6 +69,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin === self.location.origin) {
     if (request.mode === 'navigate') return event.respondWith(page(request))
     if (url.pathname.startsWith(`${BASE}api/`)) {
+      if (url.searchParams.has('catalog')) return event.respondWith(keptFirst(event, DATA, true, isJson))
       if (KEEP_API) event.respondWith(freshFirst(event, DATA))
       return
     }
@@ -103,17 +107,21 @@ async function appFile(request) {
   return (await caches.match(request, { ignoreVary: true })) ?? fetch(request)
 }
 
+/** Where there's no /api/ (a plain file server), its paths answer with the page instead. */
+const isJson = (response) => !!response.headers.get('Content-Type')?.includes('json')
+
 /**
  * The kept copy at once, when there is one. With `refresh`, a newer copy is fetched alongside
- * for next time (text and data); without, a kept copy is final (font files).
+ * for next time (text and data); without, a kept copy is final (font files). `keep` can turn
+ * an answer down.
  */
-async function keptFirst(event, cacheName, refresh) {
+async function keptFirst(event, cacheName, refresh, keep = () => true) {
   const { request } = event
   const cache = await caches.open(cacheName)
   const kept = await cache.match(request, { ignoreVary: true })
   if (kept && !refresh) return kept
   const network = fetch(request).then(async (response) => {
-    if (response.ok) await cache.put(request, response.clone())
+    if (response.ok && keep(response)) await cache.put(request, response.clone())
     return response
   })
   if (!kept) return network
@@ -127,7 +135,7 @@ async function freshFirst(event, cacheName) {
   const cache = await caches.open(cacheName)
   try {
     const response = await fetch(request)
-    if (response.ok && response.headers.get('Content-Type')?.includes('json')) event.waitUntil(cache.put(request, response.clone()))
+    if (response.ok && isJson(response)) event.waitUntil(cache.put(request, response.clone()))
     return response
   } catch (error) {
     const kept = await cache.match(request, { ignoreVary: true })

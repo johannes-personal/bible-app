@@ -72,3 +72,14 @@ export function useOnline(): boolean {
   }, [])
   return online
 }
+
+/** True once `ms` have passed since `key` last changed; false while it's null. */
+export function useElapsed(key: string | null, ms: number): boolean {
+  const [elapsed, setElapsed] = useState<string | null>(null)
+  useEffect(() => {
+    if (key == null) return
+    const timer = setTimeout(() => setElapsed(key), ms)
+    return () => clearTimeout(timer)
+  }, [key, ms])
+  return key != null && elapsed === key
+}

@@ -213,44 +213,72 @@ export async function fetchBooks(translationId: string): Promise<Book[]> {
   }
 }
 
-/** A chapter with every narration available for it: the text source's own, plus Bible Brain's. */
+/**
+ * A chapter's text from its own source. It doesn't wait for the list of translations, which a
+ * first visit can spend seconds on; the narration other sources have for the chapter comes
+ * separately (`fetchNarration`).
+ */
 export async function fetchChapter(ref: ChapterRef): Promise<ChapterData> {
   if (isBibleBrainId(ref.translationId)) return fetchBbChapter(ref)
-  const [data, entry] = await Promise.all([fetchChapterText(ref), entryOf(ref.translationId)])
-  const bibleId = entry?.bibleBrainId
-  const audio = bibleId ? await fetchBbAudio(bibleId, ref.book, ref.chapter).catch(() => null) : null
-  if (!audio) return data
-  return {
-    ...data,
-    thisChapterAudioLinks: { ...data.thisChapterAudioLinks, ...audio.links },
-    thisChapterAudioTimings: { ...data.thisChapterAudioTimings, ...audio.timings },
+  if (!isYouVersionId(ref.translationId)) return fetchFreeChapter(ref.translationId, ref)
+  try {
+    return await fetchYvChapter(ref)
+  } catch (error) {
+    // YouVersion is unavailable: read the same translation from the Free Use Bible API, under the YouVersion id.
+    const freeId = await freeIdOf(ref.translationId)
+    const free = freeId ? await fetchFreeChapter(freeId, ref).catch(() => null) : null
+    if (!free) throw error
+    const asYv = (r: ChapterRef | null) => r && { ...r, translationId: ref.translationId }
+    return {
+      ...free,
+      translation: { ...free.translation, id: ref.translationId },
+      nextChapterReference: asYv(free.nextChapterReference),
+      previousChapterReference: asYv(free.previousChapterReference),
+    }
   }
 }
 
-async function fetchChapterText(ref: ChapterRef): Promise<ChapterData> {
-  if (!isYouVersionId(ref.translationId)) return fetchFreeChapter(ref.translationId, ref)
-  const [yv, free] = await Promise.all([
-    fetchYvChapter(ref).then(
-      (data) => ({ data, error: null }),
-      (error: Error) => ({ data: null, error }),
-    ),
-    freeIdOf(ref.translationId).then((id) => (id ? fetchFreeChapter(id, ref).catch(() => null) : null)),
-  ])
-  if (yv.data) {
-    // Recorded narration from the Free Use Bible API, when its verses line up with YouVersion's.
-    if (!free || free.numberOfVerses !== yv.data.numberOfVerses) return yv.data
-    return { ...yv.data, thisChapterAudioLinks: free.thisChapterAudioLinks, thisChapterAudioTimings: free.thisChapterAudioTimings }
-  }
-  if (!free) throw yv.error
-  // YouVersion is unavailable: read the same translation from the Free Use Bible API, under the YouVersion id.
-  const asYv = (r: ChapterRef | null) => r && { ...r, translationId: ref.translationId }
-  return {
-    ...free,
-    translation: { ...free.translation, id: ref.translationId },
-    nextChapterReference: asYv(free.nextChapterReference),
-    previousChapterReference: asYv(free.previousChapterReference),
-  }
+/** Recorded narration for a chapter: narrator name -> mp3 URL, and -> its verse timings. */
+export interface Narration {
+  links: Record<string, string>
+  timings: Record<string, string>
 }
+
+/**
+ * The recorded narration other sources have for a chapter, to add to what its own source came
+ * with: the Free Use Bible API's, for a translation read from YouVersion (when its verses line
+ * up with YouVersion's), and Bible Brain's. Finding these takes the list of translations, so
+ * this comes after the text. Null when there is none; it doesn't fail.
+ */
+export async function fetchNarration(ref: ChapterRef, numberOfVerses: number): Promise<Narration | null> {
+  if (isBibleBrainId(ref.translationId)) return null
+  const entry = await entryOf(ref.translationId)
+  if (!entry) return null
+  const [free, bibleBrain] = await Promise.all([
+    isYouVersionId(ref.translationId) && entry.freeId ? fetchFreeChapter(entry.freeId, ref).catch(() => null) : null,
+    entry.bibleBrainId ? fetchBbAudio(entry.bibleBrainId, ref.book, ref.chapter).catch(() => null) : null,
+  ])
+  const narration: Narration = { links: {}, timings: {} }
+  if (free && free.numberOfVerses === numberOfVerses) {
+    Object.assign(narration.links, free.thisChapterAudioLinks)
+    Object.assign(narration.timings, free.thisChapterAudioTimings)
+  }
+  if (bibleBrain) {
+    Object.assign(narration.links, bibleBrain.links)
+    Object.assign(narration.timings, bibleBrain.timings)
+  }
+  return Object.keys(narration.links).length ? narration : null
+}
+
+/** A chapter with narration added to its own. */
+export const withNarration = (chapter: ChapterData, narration: Narration | null): ChapterData =>
+  narration
+    ? {
+        ...chapter,
+        thisChapterAudioLinks: { ...chapter.thisChapterAudioLinks, ...narration.links },
+        thisChapterAudioTimings: { ...chapter.thisChapterAudioTimings, ...narration.timings },
+      }
+    : chapter
 
 /** Cross references for a chapter (OpenBible.info, via the Free Use Bible API). */
 export async function fetchCrossRefs(book: string, chapter: number): Promise<ChapterCrossRefs> {

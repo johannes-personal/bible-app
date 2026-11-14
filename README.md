@@ -40,7 +40,7 @@ The app can be added to a phone's home screen (or installed on a computer), wher
 - `pwa/sw.js` is the service worker. The build (`vite.config.ts`) writes it to `dist/sw.js` with the list of the app's own files, which it keeps on the device, so the app opens offline. A new build installs alongside the old one and takes over the next time the app is opened.
 - Whatever the app reads from the Free Use Bible API (chapters, book lists, cross references, the interlinear), the word study data and the fonts are kept as they are used, and served from the device first.
 - A whole translation can be saved from the translation list: its `complete.json` is fetched once and split into the per-chapter answers the app asks for (`src/offline/`). The word study data can be saved from its start page (the build lists its files in `word-study/files.json`).
-- Nothing from `/api/` (YouVersion, Bible Brain) is kept: their licences don't clearly allow storing the text, so those translations need a connection. `KEEP_API` in `pwa/sw.js` is the one switch for that.
+- From `/api/` (YouVersion, Bible Brain) only the lists of translations are kept (names and abbreviations), so the app doesn't wait for them each time it starts. Bible text from there is never kept: the licences don't clearly allow storing it, so those translations need a connection. `KEEP_API` in `pwa/sw.js` is the one switch for that.
 
 The service worker only runs in the built app (`npm run build && npm run preview`), not on the development server.
 
