@@ -251,6 +251,9 @@ export default function Inspiration({ topic: topicParam }: { topic: string | nul
   )
 }
 
+/** iPhone and iPad (which calls itself a Mac, but with a touch screen). */
+const isApple = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+
 function VerseCard({
   card,
   index,
@@ -345,6 +348,12 @@ function VerseCard({
     try {
       const file = await image()
       if (!file) return
+      // A web page can't write to the iPhone's photo library, but the share sheet can: it
+      // offers "Save Image", which puts it in Photos. A download would go to Files instead.
+      if (isApple() && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] })
+        return
+      }
       const url = URL.createObjectURL(file)
       const a = document.createElement('a')
       a.href = url
@@ -353,8 +362,8 @@ function VerseCard({
       a.click()
       a.remove()
       setTimeout(() => URL.revokeObjectURL(url), 10_000)
-    } catch {
-      onToast("Couldn't save the image")
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') onToast("Couldn't save the image")
     } finally {
       setBusy(false)
     }

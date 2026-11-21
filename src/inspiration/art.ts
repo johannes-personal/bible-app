@@ -1,4 +1,4 @@
-// The backgrounds of inspiration cards: landscapes, skies and soft glows, drawn on a canvas.
+// The backgrounds of inspiration cards: landscapes, skies and evening light, drawn on a canvas.
 // Which kind of scene suits a passage is worked out from its words when the verse list is built
 // (scripts/build-inspiration.mjs): still waters get a lake, a storm gets rain, "the heavens" a
 // sky. The passage's key seeds the rest (the colours, where the sun is), so each passage always
@@ -56,7 +56,7 @@ const PALETTES: Record<SceneKind, Palette[]> = {
   mountains: DAY,
   sea: [DAWN, DUSK, OPEN_SKY, MORNING_SEA, ROSE, LAVENDER, GOLD],
   night: [NIGHT_BLUE, NIGHT_VIOLET],
-  glow: [DAWN, DUSK, ROSE, LAVENDER, GOLD, MORNING_SEA],
+  glow: [DAWN, DUSK, ROSE, LAVENDER, HARVEST, MORNING_SEA],
   dunes: [DESERT, GOLD, DUSK, ROSE, HARVEST],
   sunrise: [DAWN, DUSK, ROSE, GOLD, DESERT, LAVENDER, HARVEST],
   sky: [OPEN_SKY, LAVENDER, MORNING_SEA, ROSE, DAWN, MEADOW],
@@ -503,13 +503,27 @@ export function drawScene(ctx: Ctx, w: number, h: number, scene: Scene) {
       break
     }
     case 'glow': {
-      ctx.fillStyle = palette.sky[1]
-      ctx.fillRect(0, 0, w, h)
-      const colors = [palette.sky[0], palette.sky[2], palette.sky[3], palette.light, palette.far]
-      for (let i = 0; i < 6; i++) {
-        const c = colors[Math.floor(random() * colors.length)]
-        glow(ctx, random() * w, random() * h, unit * (0.7 + random() * 0.9), c, 0.55 + random() * 0.35)
+      // Evening light: the sun setting into a valley, its beams fanning up, lit clouds above.
+      const horizon = h * (0.7 + random() * 0.04)
+      sky(ctx, w, horizon, palette)
+      const valley = 0.5 + side * (0.06 + random() * 0.1)
+      const sunX = w * valley
+      const r = unit * (0.07 + random() * 0.03)
+      for (let i = 0; i < 2; i++) {
+        const y = h * (0.1 + i * 0.1 + random() * 0.04)
+        const x = w * (0.25 + random() * 0.5)
+        cloud(ctx, x, y, unit * (0.5 + random() * 0.4), palette.light, 0.2 - i * 0.05, random, palette.far)
       }
+      rays(ctx, sunX, horizon, h * 0.9, palette.light, 0.1, random, Math.PI * 1.05, Math.PI * 1.95, 11)
+      glow(ctx, sunX, horizon, unit * 1.3, palette.light, 0.6)
+      disc(ctx, sunX, horizon - r * 0.2, r, alpha(palette.light, 0.95))
+      // Slopes on either side, steeper the nearer they are, opening onto the light.
+      layers(ctx, w, h, horizon, palette, 4, (i) => {
+        const wobble = rolling(random, 0.012)
+        const steep = [0.04, 0.08, 0.13, 0.19][i]
+        const c = valley + (random() - 0.5) * 0.08
+        return (t) => -steep * Math.pow(Math.min(1, Math.abs(t - c) * 2), 1.6) + wobble(t) + 0.01
+      })
       break
     }
     case 'dunes': {
