@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { buildSegments, SpeechEngine, splitText, verseAt } from '../audio/engines'
+import { buildSegments, estimateStarts, SpeechEngine, splitText, verseAt } from '../audio/engines'
 
 describe('verseAt', () => {
   const starts = [4, 9.7, 22.8, 31.6]
@@ -11,6 +11,21 @@ describe('verseAt', () => {
   })
   it('handles missing timings', () => {
     expect(verseAt([], 10)).toBe(-1)
+  })
+})
+
+describe('estimateStarts', () => {
+  it('spreads verses over a recording by length, after the chapter is announced', () => {
+    const starts = estimateStarts(['The LORD is my shepherd; I shall not want.', 'He makes me lie down in green pastures.', 'Short.'], 60)
+    expect(starts).toHaveLength(3)
+    expect(starts[0]).toBe(3)
+    expect(starts[1]).toBeGreaterThan(starts[0])
+    expect(starts[2] - starts[1]).toBeLessThan(starts[1] - starts[0])
+    expect(starts[2]).toBeLessThan(60)
+  })
+  it('gives nothing without verses or a length', () => {
+    expect(estimateStarts([], 60)).toEqual([])
+    expect(estimateStarts(['A verse.'], NaN)).toEqual([])
   })
 })
 

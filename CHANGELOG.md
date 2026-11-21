@@ -2,6 +2,7 @@
 
 ## 1.13.1
 
+- The BSB's recorded narrators (David, Hays and Souer) are back. The Free Use Bible API stopped publishing their verse timings, and the app only offered narrators with timings, so the BSB had just the device voice. Narrators without timings are now offered too. Where each verse starts is estimated from the verses' lengths, so the highlight and autoscroll follow the reading, give or take a second or two.
 - On an iPhone the device voice sometimes stayed silent, most often when moving on to the next chapter, tapping a verse or changing the speed while listening. Safari drops speech started right after stopping other speech, without an error. Playback now waits a moment after stopping before it speaks. If nothing starts within a couple of seconds, it tries once more, and then shows as paused instead of seeming to play in silence.
 
 ## 1.13.0

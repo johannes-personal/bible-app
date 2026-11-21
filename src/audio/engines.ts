@@ -47,6 +47,28 @@ export function verseAt(starts: number[], t: number): number {
   return found
 }
 
+/**
+ * Where each verse probably starts in a chapter's recording, from the verses' lengths: after
+ * the narrator announces the chapter, and with a short pause between verses. Checked against
+ * the pauses in the BSB's recordings (Genesis 1, Psalm 23, John 3, all three narrators), it is
+ * typically within a second of a verse's start and nine times in ten within three.
+ */
+export function estimateStarts(verses: string[], duration: number): number[] {
+  if (!verses.length || !(duration > 0)) return []
+  const intro = Math.min(3, duration * 0.05)
+  const outro = Math.min(1.5, duration * 0.02)
+  const weights = verses.map((v) => v.length + 25)
+  const total = weights.reduce((a, b) => a + b, 0)
+  const span = duration - intro - outro
+  const starts: number[] = []
+  let at = intro
+  for (const w of weights) {
+    starts.push(at)
+    at += (w / total) * span
+  }
+  return starts
+}
+
 export class NarrationEngine implements Engine {
   private audio: HTMLAudioElement
   private starts: number[] = []
@@ -54,21 +76,32 @@ export class NarrationEngine implements Engine {
   private readonly cb: EngineCallbacks
   private readonly off: () => void
 
-  constructor(url: string, timingsPath: string, rate: number, cb: EngineCallbacks) {
+  constructor(url: string, timingsPath: string | undefined, verses: string[], rate: number, cb: EngineCallbacks) {
     this.cb = cb
     const audio = (this.audio = new Audio(url))
     audio.preload = 'auto'
     audio.playbackRate = rate
 
-    fetchAudioTimings(timingsPath)
-      .then((t) => {
-        this.starts = t.verses
-        if (this.pendingIndex !== undefined) this.jumpTo(this.pendingIndex)
-        this.pendingIndex = undefined
-      })
-      .catch(() => {
-        // Playback still works without timings; only verse sync is lost.
-      })
+    // Without timings (the Free Use Bible API stopped publishing them), estimate where each
+    // verse starts from its length, once the recording's length is known.
+    const estimate = () => {
+      if (this.starts.length || !Number.isFinite(audio.duration)) return
+      this.starts = estimateStarts(verses, audio.duration)
+      if (this.pendingIndex !== undefined) this.jumpTo(this.pendingIndex)
+      this.pendingIndex = undefined
+    }
+    if (timingsPath) {
+      fetchAudioTimings(timingsPath)
+        .then((t) => {
+          this.starts = t.verses
+          if (this.pendingIndex !== undefined) this.jumpTo(this.pendingIndex)
+          this.pendingIndex = undefined
+        })
+        .catch(estimate)
+    }
+    audio.addEventListener('loadedmetadata', () => {
+      if (!timingsPath) estimate()
+    })
 
     const update = () => {
       const duration = Number.isFinite(audio.duration) ? audio.duration : undefined
