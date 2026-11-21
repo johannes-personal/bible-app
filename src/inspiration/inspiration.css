@@ -1,0 +1,370 @@
+/* Inspiration mode: full-screen cards, one verse each. White on the drawn scenes in every
+   theme; on a phone the card fills the screen, on wider screens it's a 9:16 card. */
+
+.inspire {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: #0c0d12;
+  color: #fff;
+  color-scheme: dark;
+  font-family: var(--sans);
+}
+
+.inspire-feed {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+}
+
+.inspire-feed::-webkit-scrollbar {
+  display: none;
+}
+
+.inspire-card {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  background: radial-gradient(
+    120% 80% at 50% 38%,
+    color-mix(in srgb, var(--from, #1b1e2a) 50%, #000),
+    color-mix(in srgb, var(--to, #08090d) 75%, #000)
+  );
+}
+
+.inspire-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+/* Wider than a phone held upright: a card with room around it. */
+@media (min-aspect-ratio: 5/8) {
+  .inspire-frame {
+    width: auto;
+    height: calc(100% - 96px);
+    margin-top: 48px;
+    aspect-ratio: 9 / 16;
+    border-radius: 22px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  }
+}
+
+/* A phone on its side: the card takes the full height, its buttons go beside it. */
+@media (min-aspect-ratio: 5/8) and (max-height: 560px) {
+  .inspire-frame {
+    height: 100%;
+    margin-top: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .inspire-frame .inspire-actions {
+    left: calc(100% + 20px);
+    right: auto;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .inspire-hint {
+    display: none;
+  }
+}
+
+.inspire-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The words: placed and sized as on the saved image (see image.ts). */
+.inspire-words {
+  position: absolute;
+  left: 50%;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  width: 77.8%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.inspire-verse {
+  margin: 0;
+  font-weight: 400;
+  color: #fff;
+  text-wrap: balance;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.35);
+  overflow-wrap: break-word;
+}
+
+.inspire-rule {
+  display: block;
+  width: 5.2cqw;
+  height: 2px;
+  margin: 2.6cqw 0;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.inspire-label {
+  margin: 0;
+  font-size: max(12px, 2.8cqw);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+}
+
+.inspire-wait {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 18px 0 rgba(255, 255, 255, 0.5), -18px 0 rgba(255, 255, 255, 0.5);
+  animation: inspire-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes inspire-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.inspire-error p {
+  margin: 0 0 16px;
+  font-size: 16px;
+  line-height: 1.5;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Close and topics ---------- */
+
+.inspire-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 10px) 0 10px 12px;
+  pointer-events: none;
+}
+
+.inspire-top > * {
+  pointer-events: auto;
+}
+
+.inspire-round {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.inspire-topics {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 3px 24px 3px 4px;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 28px), transparent);
+}
+
+.inspire-topics::-webkit-scrollbar {
+  display: none;
+}
+
+.inspire-chip {
+  flex: none;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.24);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Where the choice of verses comes from (CC BY), after the topics. */
+.inspire-credit {
+  flex: none;
+  align-self: center;
+  margin-left: 6px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.inspire-credit:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.inspire-chip[aria-pressed='true'] {
+  background: #fff;
+  border-color: #fff;
+  color: #15161a;
+}
+
+@media (min-aspect-ratio: 5/8) {
+  .inspire-top {
+    max-width: 1240px;
+    padding-right: 12px;
+  }
+
+  .inspire-topics {
+    justify-content: safe center;
+  }
+}
+
+/* ---------- Actions ---------- */
+
+.inspire-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + 20px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 20px;
+}
+
+.inspire-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 46px;
+  padding: 0 16px 0 22px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #15161a;
+  font-size: 15px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+
+.inspire-pill .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.inspire-error .inspire-pill {
+  padding: 0 22px;
+}
+
+.inspire-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.5);
+}
+
+.inspire-tool-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.inspire-tool:hover:not(:disabled) .inspire-tool-icon,
+.inspire-round:hover {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.inspire-pill:hover {
+  background: #fff;
+}
+
+/* A nudge on the first card: there's more below. */
+.inspire-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 108px);
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.75);
+  animation: inspire-bob 1.8s ease-in-out infinite;
+}
+
+@keyframes inspire-bob {
+  50% {
+    transform: translate(-50%, 6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inspire-hint,
+  .inspire-wait {
+    animation: none;
+  }
+}
+
+.inspire-toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 96px);
+  transform: translateX(-50%);
+  z-index: 3;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(20, 21, 26, 0.92);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.inspire-empty p {
+  max-width: 280px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.75);
+}

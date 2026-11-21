@@ -105,7 +105,7 @@ export function useSettings() {
 export type UpdateSettings = ReturnType<typeof useSettings>[1]
 
 /** Adds the Google Fonts stylesheet for a typeface, once. */
-export function loadFont(font: (typeof FONTS)[number]) {
+export function loadFont(font: { id: string; googleFamily?: string }) {
   if (!font.googleFamily) return
   const id = `font-${font.id}`
   if (document.getElementById(id)) return

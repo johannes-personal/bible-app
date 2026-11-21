@@ -214,6 +214,17 @@ button:disabled {
   .study-link span {
     display: none;
   }
+
+  /* Four buttons and two pills: a little closer together, so the book name has room. */
+  .header-inner {
+    gap: 4px;
+    padding: 0 12px;
+  }
+
+  .header-inner > .study-link,
+  .header-inner > .icon-button {
+    width: 36px;
+  }
 }
 
 .icon-button {
@@ -232,6 +243,13 @@ button:disabled {
 .icon-button:hover:not(:disabled),
 .icon-button.selected {
   background: var(--surface-2);
+}
+
+/* While inspiration mode loads (its own styles come with it). */
+.inspire-loading {
+  position: fixed;
+  inset: 0;
+  background: #0c0d12;
 }
 
 .aa {

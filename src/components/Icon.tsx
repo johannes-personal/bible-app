@@ -16,6 +16,9 @@ const ICONS = {
   check: 'M5 12.5l4.5 4.5L19 7',
   columns: 'M4 5h16v14H4zM12 5v14',
   book: 'M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5',
+  share: 'M12 15V3M7.5 7.5L12 3l4.5 4.5M7 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1',
+  // An open book with light rising from it.
+  inspire: 'M12 10.5c-2.5-1.6-5.5-1.9-8.5-1.2v10.4c3-.7 6-.4 8.5 1.2 2.5-1.6 5.5-1.9 8.5-1.2V9.3c-3-.7-6-.4-8.5 1.2zM12 10.5v10.4M12 2.5v3M7.5 4l1.2 2M16.5 4l-1.2 2',
 } as const
 
 export function Icon({ name }: { name: keyof typeof ICONS }) {

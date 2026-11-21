@@ -3,20 +3,21 @@ import type { ChapterRef } from './api'
 import { load } from './storage'
 
 // The current chapter lives in the URL hash (#/BSB/JHN/3, or #/BSB/JHN/3/16 to point at a
-// verse) so links are shareable and the browser's back button works.
+// verse, #/BSB/PHP/4/6-7 at a few) so links are shareable and the browser's back button works.
 
 export const LAST_KEY = 'bible:last'
 
 export function parseHash(hash: string): ChapterRef | null {
-  const m = /^#\/([^/]+)\/([^/]+)\/(\d+)(?:\/(\d+))?$/.exec(hash)
-  if (!m) return null
+  const m = /^#\/([^/]+)\/([^/]+)\/(\d+)(?:\/(\d+)(?:-(\d+))?)?$/.exec(hash)
+  if (!m || m[1] === 'study' || m[1] === 'inspire') return null
   const ref: ChapterRef = { translationId: decodeURIComponent(m[1]), book: m[2].toUpperCase(), chapter: Number(m[3]) }
   if (m[4]) ref.verse = Number(m[4])
+  if (m[5] && Number(m[5]) > Number(m[4])) ref.verseEnd = Number(m[5])
   return ref
 }
 
 export function hashFor(ref: ChapterRef): string {
-  const verse = ref.verse ? `/${ref.verse}` : ''
+  const verse = ref.verse ? `/${ref.verse}${ref.verseEnd && ref.verseEnd > ref.verse ? `-${ref.verseEnd}` : ''}` : ''
   return `#/${encodeURIComponent(ref.translationId)}/${ref.book}/${ref.chapter}${verse}`
 }
 
@@ -154,6 +155,52 @@ export function useStudyRoute(): StudyRoute | null {
   const [route, setRoute] = useState(() => parseStudyHash(location.hash))
   useEffect(() => {
     const onChange = () => setRoute(parseStudyHash(location.hash))
+    window.addEventListener('hashchange', onChange)
+    return () => window.removeEventListener('hashchange', onChange)
+  }, [])
+  return route
+}
+
+// Inspiration mode: #/inspire, or #/inspire/hope for one topic.
+
+export interface InspireRoute {
+  topic: string | null
+}
+
+export function parseInspireHash(hash: string): InspireRoute | null {
+  const m = /^#\/inspire(?:\/([a-z]+))?\/?$/.exec(hash)
+  return m ? { topic: m[1] ?? null } : null
+}
+
+export const inspireHash = (topic: string | null) => (topic ? `#/inspire/${topic}` : '#/inspire')
+
+let openedFromApp = false
+
+/** Opens inspiration mode from the reader, so closing it goes back there. */
+export function openInspiration() {
+  openedFromApp = true
+  location.hash = inspireHash(null)
+}
+
+/** Leaves inspiration mode: back to the page it was opened from, or to the reader. */
+export function closeInspiration() {
+  if (openedFromApp) {
+    openedFromApp = false
+    history.back()
+    return
+  }
+  const last = load<ChapterRef | null>(LAST_KEY, null)
+  replaceHash(hashFor(last ? chapterOf(last) : { translationId: DEFAULT_TRANSLATION, book: 'JHN', chapter: 1 }))
+}
+
+export function useInspireRoute(): InspireRoute | null {
+  const [route, setRoute] = useState(() => parseInspireHash(location.hash))
+  useEffect(() => {
+    const onChange = () =>
+      setRoute((current) => {
+        const next = parseInspireHash(location.hash)
+        return current?.topic === next?.topic && !current === !next ? current : next
+      })
     window.addEventListener('hashchange', onChange)
     return () => window.removeEventListener('hashchange', onChange)
   }, [])
