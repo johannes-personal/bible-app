@@ -19,7 +19,7 @@ import {
   VERSE_GOOGLE_FAMILY,
   type CardContent,
 } from './image'
-import { cardText, passageText, verseTexts } from './text'
+import { bookLabel, cardText, passageText, verseTexts } from './text'
 import './inspiration.css'
 
 // Inspiration mode: one verse at a time, full screen over a drawn landscape, scrolled through
@@ -59,7 +59,7 @@ function loadCard(passage: Passage, translationId: string): Promise<Loaded | nul
       const verses = passage.last > passage.first ? `${passage.first}–${passage.last}` : `${passage.first}`
       const content: CardContent = {
         text: cardText(raw),
-        reference: `${chapter.book.name} ${passage.chapter}:${verses}`,
+        reference: `${bookLabel(passage.book, chapter.book.name)} ${passage.chapter}:${verses}`,
         translation: chapter.translation.shortName || chapter.translation.name,
       }
       return { ...content, size: fitVerse(content.text).size }

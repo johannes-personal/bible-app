@@ -3,7 +3,7 @@ import type { ChapterItem } from '../api'
 import { hashString, sceneFor, seeded } from '../inspiration/art'
 import { feedOrder, PASSAGES, passagesFor, TOPICS, type Passage } from '../inspiration/feed'
 import { imageName } from '../inspiration/image'
-import { balanceQuotes, cardText, passageText, verseTexts } from '../inspiration/text'
+import { balanceQuotes, bookLabel, cardText, passageText, verseTexts } from '../inspiration/text'
 import { hashFor, inspireHash, parseHash, parseInspireHash } from '../route'
 
 const passage = (key: string, tier: 1 | 2 | 3): Passage => ({ key, book: 'PSA', chapter: 1, first: 1, last: 1, tier, topics: ['hope'] })
@@ -127,6 +127,12 @@ describe('art and images', () => {
     expect(hashString('a')).not.toBe(hashString('b'))
     const kinds = new Set(PASSAGES.slice(0, 200).map((p) => sceneFor(p.key).kind))
     expect(kinds.size).toBeGreaterThanOrEqual(5)
+  })
+
+  it('calls one psalm a Psalm', () => {
+    expect(bookLabel('PSA', 'Psalms')).toBe('Psalm')
+    expect(bookLabel('PSA', 'Psaltaren')).toBe('Psaltaren')
+    expect(bookLabel('JHN', 'John')).toBe('John')
   })
 
   it('names images after the reference', () => {

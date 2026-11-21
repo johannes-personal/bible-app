@@ -21,6 +21,9 @@ export function verseTexts(items: ChapterItem[]): { number: number; text: string
   return out
 }
 
+/** A book's name in a reference: one psalm is a "Psalm" (English book lists say "Psalms"). */
+export const bookLabel = (id: string, name: string) => (id === 'PSA' && name === 'Psalms' ? 'Psalm' : name)
+
 /** The text of verses `first`–`last` from a chapter's verse list, or null if any is missing. */
 export function passageText(verses: { number: number; text: string }[], first: number, last: number): string | null {
   const parts: string[] = []
