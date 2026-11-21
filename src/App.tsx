@@ -459,7 +459,7 @@ export default function App() {
                 <span>Search</span>
               </button>
               <button className="icon-button" onClick={openInspiration} aria-label="Inspiration" title="Inspiration: a verse at a time">
-                <Icon name="sparkle" />
+                <Icon name="inspire" />
               </button>
               <button className="icon-button" onClick={() => setPanel('settings')} aria-label="Reading settings">
                 <span className="aa" aria-hidden="true">Aa</span>
