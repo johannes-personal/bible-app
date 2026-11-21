@@ -47,6 +47,28 @@ export function verseAt(starts: number[], t: number): number {
   return found
 }
 
+/**
+ * Where each verse probably starts in a chapter's recording, from the verses' lengths: after
+ * the narrator announces the chapter, and with a short pause between verses. Checked against
+ * the pauses in the BSB's recordings (Genesis 1, Psalm 23, John 3, all three narrators), it is
+ * typically within a second of a verse's start and nine times in ten within three.
+ */
+export function estimateStarts(verses: string[], duration: number): number[] {
+  if (!verses.length || !(duration > 0)) return []
+  const intro = Math.min(3, duration * 0.05)
+  const outro = Math.min(1.5, duration * 0.02)
+  const weights = verses.map((v) => v.length + 25)
+  const total = weights.reduce((a, b) => a + b, 0)
+  const span = duration - intro - outro
+  const starts: number[] = []
+  let at = intro
+  for (const w of weights) {
+    starts.push(at)
+    at += (w / total) * span
+  }
+  return starts
+}
+
 export class NarrationEngine implements Engine {
   private audio: HTMLAudioElement
   private starts: number[] = []
@@ -54,21 +76,32 @@ export class NarrationEngine implements Engine {
   private readonly cb: EngineCallbacks
   private readonly off: () => void
 
-  constructor(url: string, timingsPath: string, rate: number, cb: EngineCallbacks) {
+  constructor(url: string, timingsPath: string | undefined, verses: string[], rate: number, cb: EngineCallbacks) {
     this.cb = cb
     const audio = (this.audio = new Audio(url))
     audio.preload = 'auto'
     audio.playbackRate = rate
 
-    fetchAudioTimings(timingsPath)
-      .then((t) => {
-        this.starts = t.verses
-        if (this.pendingIndex !== undefined) this.jumpTo(this.pendingIndex)
-        this.pendingIndex = undefined
-      })
-      .catch(() => {
-        // Playback still works without timings; only verse sync is lost.
-      })
+    // Without timings (the Free Use Bible API stopped publishing them), estimate where each
+    // verse starts from its length, once the recording's length is known.
+    const estimate = () => {
+      if (this.starts.length || !Number.isFinite(audio.duration)) return
+      this.starts = estimateStarts(verses, audio.duration)
+      if (this.pendingIndex !== undefined) this.jumpTo(this.pendingIndex)
+      this.pendingIndex = undefined
+    }
+    if (timingsPath) {
+      fetchAudioTimings(timingsPath)
+        .then((t) => {
+          this.starts = t.verses
+          if (this.pendingIndex !== undefined) this.jumpTo(this.pendingIndex)
+          this.pendingIndex = undefined
+        })
+        .catch(estimate)
+    }
+    audio.addEventListener('loadedmetadata', () => {
+      if (!timingsPath) estimate()
+    })
 
     const update = () => {
       const duration = Number.isFinite(audio.duration) ? audio.duration : undefined
@@ -175,6 +208,12 @@ export function buildSegments(verses: string[]): { segments: Segment[]; total: n
   return { segments, total: Math.max(total, 1) }
 }
 
+/**
+ * When speech was last cancelled, by any engine: iOS finishes cancelling a little after the
+ * call returns, and a new chapter's engine starts right after the old one stops.
+ */
+const speech = { cancelledAt: -Infinity }
+
 export class SpeechEngine implements Engine {
   private readonly segments: Segment[]
   private readonly total: number
@@ -205,32 +244,64 @@ export class SpeechEngine implements Engine {
     if (s) this.cb.onUpdate({ index: s.verseIndex, progress: s.start / this.total })
   }
 
+  /** The utterance being spoken, kept so the browser can't collect it (and its events) early. */
+  utterance: SpeechSynthesisUtterance | null = null
+  private timers: ReturnType<typeof setTimeout>[] = []
+  private cancel() {
+    window.speechSynthesis.cancel()
+    speech.cancelledAt = Date.now()
+  }
+
+  private later(fn: () => void, ms: number) {
+    this.timers.push(setTimeout(fn, ms))
+  }
+
+  private clearTimers() {
+    for (const t of this.timers) clearTimeout(t)
+    this.timers = []
+  }
+
   /**
    * Speaks the current segment. `interrupt` stops whatever is being spoken first; it is
    * false when moving on after a segment ends, because some voices fire `end` slightly
    * before their audio finishes and cancelling then clips the last word (worse at high rates).
+   *
+   * Safari on iPhone drops, without a word or an event, an utterance spoken right after
+   * cancelling another; so after a cancel it waits a moment before speaking. And should
+   * nothing start anyway, it tries once more rather than sit there silent.
    */
-  private speak(interrupt = true) {
+  private speak(interrupt = true, retry = true) {
     const synth = window.speechSynthesis
     const gen = ++this.generation
-    if (interrupt) synth.cancel()
+    this.clearTimers()
+    if (interrupt && (synth.speaking || synth.pending)) this.cancel()
+    const settling = Date.now() - speech.cancelledAt < 250
     const s = this.segments[this.seg]
     if (!s) return
 
     const u = new SpeechSynthesisUtterance(s.text)
-    u.lang = this.voice?.lang ?? this.lang
-    if (this.voice) u.voice = this.voice
+    // The voice as the browser has it now: iOS can replace its voice objects after loading.
+    const voice = this.voice && (synth.getVoices().find((v) => v.voiceURI === this.voice!.voiceURI) ?? this.voice)
+    u.lang = voice?.lang ?? this.lang
+    if (voice) u.voice = voice
     u.rate = this.rate
-    u.onstart = () => gen === this.generation && this.cb.onUpdate({ status: 'playing' })
+    let started = false
+    u.onstart = () => {
+      started = true
+      if (gen === this.generation) this.cb.onUpdate({ status: 'playing' })
+    }
     u.onboundary = (e) => {
+      started = true
       if (gen === this.generation) this.cb.onUpdate({ progress: (s.start + e.charIndex) / this.total })
     }
     u.onend = () => {
+      started = true
       if (gen !== this.generation) return
       this.seg++
       if (this.seg >= this.segments.length) {
         this.playing = false
         this.seg = 0
+        this.utterance = null
         this.cb.onUpdate({ status: 'idle', progress: 1 })
         this.cb.onEnded()
       } else {
@@ -244,7 +315,26 @@ export class SpeechEngine implements Engine {
       this.cb.onUpdate({ status: 'paused' })
     }
     this.report()
-    synth.speak(u)
+    this.utterance = u
+
+    const start = () => {
+      if (gen !== this.generation) return
+      // A synthesizer left paused (by a call, say) queues utterances without speaking them.
+      if (synth.paused) synth.resume()
+      synth.speak(u)
+      this.later(() => {
+        if (gen !== this.generation || started || synth.speaking) return
+        if (retry) {
+          this.speak(true, false)
+        } else {
+          this.playing = false
+          this.cb.onUpdate({ status: 'paused' })
+        }
+      }, 2500)
+    }
+    // Speaking straight away keeps the tap that started playback, which iOS needs the first time.
+    if (settling) this.later(start, 250 - (Date.now() - speech.cancelledAt))
+    else start()
   }
 
   private firstSegmentOf(verseIndex: number) {
@@ -262,7 +352,8 @@ export class SpeechEngine implements Engine {
   pause() {
     this.playing = false
     this.generation++
-    window.speechSynthesis.cancel()
+    this.clearTimers()
+    this.cancel()
     this.cb.onUpdate({ status: 'paused' })
   }
 
@@ -283,6 +374,7 @@ export class SpeechEngine implements Engine {
   destroy() {
     this.playing = false
     this.generation++
-    window.speechSynthesis.cancel()
+    this.clearTimers()
+    this.cancel()
   }
 }

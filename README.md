@@ -8,7 +8,7 @@ A simple, login-free Bible reader with listen-along audio.
 - **Book and chapter picker**, previous/next chapter buttons, and ←/→ keyboard shortcuts.
 - **Reading view** with section headings, poetry layout, footnotes, optional red letters, adjustable text size and light/sepia/dark themes.
 - **Listen along** with a per-chapter progress bar you can drag to seek:
-  - Recorded human narration with verse-level timings where available (e.g. the Berean Standard Bible).
+  - Recorded human narration (e.g. the Berean Standard Bible's three narrators), following along verse by verse. Where a recording comes without verse timings, where each verse starts is estimated from the verses' lengths.
   - The device's own text-to-speech voice for every other translation, in the translation's language.
   - The verse being read is highlighted and **auto-scrolls** into view. Scroll by hand and it pauses following until you tap **Follow along**.
   - Tap any verse while audio is active to jump there. Speed control, lock-screen controls, and optional continue-to-next-chapter.
@@ -17,7 +17,7 @@ Where you left off, and your settings, are remembered in the browser. Links such
 
 ## Data sources
 
-- **[Free Use Bible API](https://bible.helloao.org)** by AO Lab: openly licensed translations (BSB, WEB, KJV, NET, Folkbibeln, …) and recorded narration with verse timings for some of them. No key; called straight from the browser.
+- **[Free Use Bible API](https://bible.helloao.org)** by AO Lab: openly licensed translations (BSB, WEB, KJV, NET, Folkbibeln, …) and recorded narration for some of them (it stopped publishing the verse timings in November 2026). No key; called straight from the browser.
 - **[YouVersion Platform](https://developers.youversion.com)**: the Bibles available to our app key, including licensed ones like NIV. Called through `api/yv.ts`, a Vercel function that adds the key from the `YOUVERSION_APP_KEY` environment variable so it never reaches the browser. Non-commercial use only.
 - **[Bible Brain](https://www.faithcomesbyhearing.com/bible-brain/developer-documentation)** by Faith Comes By Hearing: recorded narration, often with verse timings, and a few translations that come with it (such as the Herziene Statenvertaling). Called through `api/bb.ts`, which adds the key from the `BIBLE_BRAIN_KEY` environment variable. Audio is streamed, never offered for download, and only for personal, non-commercial use.
 
@@ -79,7 +79,7 @@ src/
   content.ts           Chapter content → paragraphs, poetry, footnotes, and plain text for speech
   route.ts             URL hash routing (#/translation/book/chapter)
   settings.ts          Persisted reader and audio settings
-  audio/engines.ts     Narration (mp3 + verse timings) and speech-synthesis engines
+  audio/engines.ts     Narration (mp3 + verse timings, or estimated ones) and speech-synthesis engines
   audio/usePlayer.ts   Picks a voice source and drives the active engine
   audio/useAutoscroll.ts  Keeps the current verse in view
   components/          Header pickers, reader, player bar, settings

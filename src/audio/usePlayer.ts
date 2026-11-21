@@ -35,10 +35,8 @@ export function usePlayer({ chapter, verses, title, settings, onEnded, onNext, o
   const sources = useMemo<Source[]>(() => {
     if (!chapter) return []
     const links = chapter.thisChapterAudioLinks ?? {}
-    // Only narrators with verse timings, so highlighting and autoscroll stay in sync.
-    const narrators = Object.keys(chapter.thisChapterAudioTimings ?? {})
-      .filter((n) => links[n])
-      .map((n) => ({ id: n, label: `Narrator: ${capitalize(n)}` }))
+    // Narrators without verse timings play too; their verses are then estimated from their lengths.
+    const narrators = Object.keys(links).map((n) => ({ id: n, label: `Narrator: ${capitalize(n)}` }))
     const tts = speechSupported && voices.length ? [{ id: 'tts', label: 'Device voice' }] : []
     return [...narrators, ...tts]
   }, [chapter, voices.length])
@@ -74,7 +72,8 @@ export function usePlayer({ chapter, verses, title, settings, onEnded, onNext, o
         ? new SpeechEngine(verses, lang ?? 'en', voice, rate, callbacks)
         : new NarrationEngine(
             chapter.thisChapterAudioLinks[sourceId],
-            chapter.thisChapterAudioTimings[sourceId],
+            chapter.thisChapterAudioTimings?.[sourceId],
+            verses,
             rate,
             callbacks,
           )
