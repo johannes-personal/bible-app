@@ -2,7 +2,7 @@
 
 ## 1.13.0
 
-- **Inspiration mode**, from the ✦ button in the header: one verse at a time, full screen over a drawn landscape (hills, mountains, the sea, a night sky, dunes or a soft glow), scrolled through like a feed. Swipe up for the next one (or use the arrow keys or the space bar); Escape or ✕ goes back.
+- **Inspiration mode**, from a button in the header: one verse at a time, full screen over a drawn scene, scrolled through like a feed. The scene suits the verse where its words paint a picture (still waters by a lake, eagles' wings in the sky, a lamp to my feet on a path, lying down to sleep under the stars), and otherwise its topic: sunrise, clouds and light, lake, forest, meadow, path, rain or a rainbow, hills, mountains, sea, night, dunes or a soft glow. Swipe up for the next one (or use the arrow keys or the space bar); Escape or ✕ goes back.
   - **Read in context** opens the chapter in the reader at that verse, with the whole passage highlighted. Going back returns to the same card.
   - **Share** sends the card as an image (1080 × 1920, the shape of a phone screen and of stories) through the phone's share sheet; where there's none, it copies the verse with its reference. **Save** downloads the image.
   - Topics at the top: Hope, Peace, Strength, Love, Comfort, Joy, Faith, Guidance, Grace and Gratitude, or All.

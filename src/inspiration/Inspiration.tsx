@@ -111,7 +111,7 @@ export default function Inspiration({ topic: topicParam }: { topic: string | nul
           next = 0
         }
         const passage = order[next++]
-        added.push({ id: nextCardId++, passage, scene: sceneFor(passage.key) })
+        added.push({ id: nextCardId++, passage, scene: sceneFor(passage.key, passage.scene) })
       }
       plan.current = { order, next }
       setCards((list) => [...list, ...added])

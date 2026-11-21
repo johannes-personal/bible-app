@@ -37,7 +37,7 @@ export function passageText(verses: { number: number; text: string }[], first: n
 
 /**
  * Tidies a passage for a card:
- * - drops "Selah" (a musical note in the psalms);
+ * - drops "Selah" (a musical note in the psalms) and bracketed quotation marks;
  * - starts it with a capital letter;
  * - ends it with an ellipsis where its sentence goes on;
  * - closes or opens quotation marks the verses leave open: a passage taken from the middle of
@@ -46,6 +46,8 @@ export function passageText(verses: { number: number; text: string }[], first: n
 export function cardText(text: string): string {
   let s = text
     .replace(/\s*\bSelah\b\.?/g, '')
+    // Bracketed quotation marks close a speech that began chapters earlier (Matthew 6:34).
+    .replace(/\[[“”‘’"']+\]/g, '')
     .replace(/\s+/g, ' ')
     .replace(/\s+([,.;:!?”’])/g, '$1')
     .trim()

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChapterItem } from '../api'
-import { hashString, sceneFor, seeded } from '../inspiration/art'
+import { hashString, SCENE_KINDS, sceneFor, seeded } from '../inspiration/art'
 import { feedOrder, PASSAGES, passagesFor, TOPICS, type Passage } from '../inspiration/feed'
 import { imageName } from '../inspiration/image'
 import { balanceQuotes, bookLabel, cardText, passageText, verseTexts } from '../inspiration/text'
@@ -96,6 +96,7 @@ describe('card text', () => {
       'To everything there is a season, and a time for every purpose under heaven…',
     )
     expect(cardText('Trust in Him at all times. Selah And pour out your hearts.')).toBe('Trust in Him at all times. And pour out your hearts.')
+    expect(cardText('Today has enough trouble of its own.[’’]')).toBe('Today has enough trouble of its own.')
   })
 
   it('opens and closes quotations left open by the verses', () => {
@@ -126,11 +127,24 @@ describe('routes', () => {
 })
 
 describe('art and images', () => {
-  it('gives a passage the same scene every time', () => {
-    expect(sceneFor('JHN.3.16')).toEqual(sceneFor('JHN.3.16'))
+  it('gives a passage the same scene every time, of the kind chosen for it', () => {
+    expect(sceneFor('JHN.3.16', 'lake')).toEqual(sceneFor('JHN.3.16', 'lake'))
+    expect(sceneFor('JHN.3.16', 'lake').kind).toBe('lake')
     expect(hashString('a')).not.toBe(hashString('b'))
-    const kinds = new Set(PASSAGES.slice(0, 200).map((p) => sceneFor(p.key).kind))
-    expect(kinds.size).toBeGreaterThanOrEqual(5)
+  })
+
+  it('matches scenes to what passages say, with plenty of variety', () => {
+    const scene = (key: string) => PASSAGES.find((p) => p.key === key)?.scene
+    expect(scene('PSA.23.1')).toBe('meadow')
+    expect(scene('ISA.40.31')).toBe('sky')
+    expect(scene('PSA.119.105')).toBe('path')
+    expect(scene('PSA.4.8')).toBe('night')
+    expect(PASSAGES.every((p) => p.scene && SCENE_KINDS.includes(p.scene))).toBe(true)
+    const counts = new Map<string, number>()
+    for (const p of PASSAGES) counts.set(p.scene!, (counts.get(p.scene!) ?? 0) + 1)
+    expect(counts.size).toBeGreaterThanOrEqual(12)
+    // No one kind of scene takes over.
+    expect(Math.max(...counts.values())).toBeLessThan(PASSAGES.length * 0.2)
   })
 
   it('calls one psalm a Psalm', () => {

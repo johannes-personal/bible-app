@@ -1,4 +1,5 @@
 import { load, save } from '../storage'
+import { SCENE_KINDS, type SceneKind } from './art'
 import data from './verses.json'
 
 // What inspiration mode shows next. The verses come in three tiers (see
@@ -31,11 +32,15 @@ export interface Passage {
   last: number
   tier: 1 | 2 | 3
   topics: Topic[]
+  /** The kind of background that suits it. */
+  scene?: SceneKind
 }
 
-type Row = [string, number, number, number, number, number]
+type Row = [string, number, number, number, number, number, string]
 
-export const PASSAGES: Passage[] = (data.verses as Row[]).map(([book, chapter, first, last, tier, mask]) => ({
+const isScene = (s: string): s is SceneKind => (SCENE_KINDS as readonly string[]).includes(s)
+
+export const PASSAGES: Passage[] = (data.verses as Row[]).map(([book, chapter, first, last, tier, mask, scene]) => ({
   key: `${book}.${chapter}.${first}${last > first ? `-${last}` : ''}`,
   book,
   chapter,
@@ -43,6 +48,7 @@ export const PASSAGES: Passage[] = (data.verses as Row[]).map(([book, chapter, f
   last,
   tier: tier as Passage['tier'],
   topics: TOPICS.filter((_, i) => mask & (1 << i)),
+  scene: isScene(scene) ? scene : undefined,
 }))
 
 export const isTopic = (s: string | null | undefined): s is Topic => !!s && (TOPICS as string[]).includes(s)

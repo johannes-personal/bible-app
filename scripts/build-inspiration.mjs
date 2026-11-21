@@ -1,5 +1,5 @@
 // Builds src/inspiration/verses.json: the verses inspiration mode shows, in three tiers, each
-// tagged with its topics.
+// tagged with its topics and the kind of background that suits it.
 //
 //   node scripts/build-inspiration.mjs [--review FILE]
 //
@@ -419,9 +419,64 @@ function topicsOf(c) {
   return mask
 }
 
+// --- Backgrounds: the kind of scene that suits each passage (drawn by src/inspiration/art.ts) ---
+// From its words when they paint a picture: each word a scene's list has counts (the plainer
+// words in the second list count half), and the scene listed first wins a tie. Otherwise from
+// its strongest topic, a different one of the topic's scenes for different passages.
+
+const SCENES = [
+  ['rainbow', /\b(rainbow|bow in the clouds?|promises)\b/gi, /\b(covenant|promised?|faithful)\b/gi],
+  ['night', /\b(night|nights|midnight|evening|sleep|asleep|moon|stars?|darkness)\b/gi, /\b(dark|lie down|rest)\b/gi],
+  ['rain', /\b(rain|rains|showers?|dew|storms?|tempest|thunder|clouds? burst)\b/gi, /\b(wind|tears|weep\w*|mourn\w*)\b/gi],
+  ['lake', /\b(still|quiet|quietly|stillness|waters|springs?|streams?|rivers?|well-watered)\b/gi, /\b(drink|calm|peace|rest)\b/gi],
+  ['sea', /\b(sea|seas|waves|floods?|ocean|depths|deep)\b/gi, /\b(overwhelm\w*|roar\w*)\b/gi],
+  ['mountains', /\b(mountains?|rock|rocks|fortress|stronghold|heights|high places)\b/gi, /\b(refuge|shield|strong|strength|firm|unshaken|shaken|moved)\b/gi],
+  ['hills', /\b(hills?|valley|valleys|land)\b/gi, null],
+  ['path', /\b(paths?|road|journey|race)\b/gi, /\b(way|ways|steps|feet|foot|walk|walks|walking|guide\w*|lead|leads|led|straight|run|running)\b/gi],
+  ['forest', /\b(trees?|forest|cedars?|olive|planted|rooted|roots?|branches?|vines?|woods|leaf|leaves)\b/gi, /\b(grow|grows|growing)\b/gi],
+  ['meadow', /\b(fields?|grass|flowers?|lilies|harvest|seeds?|sow|sows|sown|reap|reaps|garden|pastures?|green|bloom|blossom\w*|grain|sparrows|shepherd|sheep|flock|lambs?)\b/gi, /\b(fruit\w*|bread|food)\b/gi],
+  ['dunes', /\b(desert|wilderness|dry|parched|wasteland|sand|thirst\w*|weary)\b/gi, null],
+  ['sky', /\b(heavens?|sky|skies|clouds?|eagles?|wings?|soar|birds?)\b/gi, /\b(glory|throne|above|high)\b/gi],
+  ['sunrise', /\b(morning|dawn|sun|sunrise|shine|shines|shining|arise|risen)\b/gi, /\b(light|new|rise|rises|day|today|joy)\b/gi],
+  ['glow', /\b(tender\w*|compassion\w*|embrace\w*)\b/gi, null],
+]
+const TOPIC_SCENES = {
+  hope: ['sunrise', 'sky', 'path', 'meadow', 'hills'],
+  peace: ['lake', 'meadow', 'night', 'sky', 'forest'],
+  strength: ['mountains', 'sea', 'hills', 'forest', 'dunes'],
+  love: ['glow', 'sunrise', 'meadow', 'lake', 'hills'],
+  comfort: ['rain', 'lake', 'night', 'forest', 'glow'],
+  joy: ['meadow', 'sunrise', 'glow', 'sky', 'hills'],
+  faith: ['sky', 'mountains', 'path', 'sea', 'dunes'],
+  guidance: ['path', 'hills', 'forest', 'sunrise', 'night'],
+  grace: ['sunrise', 'glow', 'lake', 'sky', 'meadow'],
+  gratitude: ['meadow', 'hills', 'sunrise', 'glow', 'sky'],
+}
+const ANY_SCENE = ['hills', 'glow', 'sky', 'sunrise', 'meadow', 'lake']
+
+/** A small, stable number from a passage's key, to vary the default scenes. */
+const keyNumber = (key) => [...key].reduce((n, c) => (n * 31 + c.charCodeAt(0)) >>> 0, 7)
+
+function sceneOf(c) {
+  let best = null
+  let bestScore = 0
+  for (const [scene, strong, plain] of SCENES) {
+    const score = (c.text.match(strong) ?? []).length + (plain ? (c.text.match(plain) ?? []).length * 0.5 : 0)
+    if (score > bestScore) {
+      best = scene
+      bestScore = score
+    }
+  }
+  if (best && bestScore >= 1) return best
+  const own = c.votes.slice(0, names.length)
+  const top = Math.max(...own)
+  const choices = top > 0 ? TOPIC_SCENES[names[own.indexOf(top)]] : ANY_SCENE
+  return choices[keyNumber(c.key) % choices.length]
+}
+
 const verses = chosen.map((c, i) => {
   const tier = i < TIER_1 ? 1 : i < TIER_1 + TIER_2 ? 2 : 3
-  return [meta.books[c.book].id, c.chapter, c.first, c.last, tier, topicsOf(c)]
+  return [meta.books[c.book].id, c.chapter, c.first, c.last, tier, topicsOf(c), sceneOf(c)]
 })
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true })
@@ -429,11 +484,14 @@ fs.writeFileSync(
   OUT,
   `{"source":"Chosen from OpenBible.info's topical Bible votes (CC BY 4.0, www.openbible.info/topics) by scripts/build-inspiration.mjs.",\n` +
     `"topics":${JSON.stringify(names)},\n` +
-    `"columns":["book","chapter","first verse","last verse","tier","topics (bits, in the order above)"],\n` +
+    `"columns":["book","chapter","first verse","last verse","tier","topics (bits, in the order above)","scene"],\n` +
     `"verses":[\n${verses.map((v) => JSON.stringify(v)).join(',\n')}\n]}\n`,
 )
 const counts = [1, 2, 3].map((t) => verses.filter((v) => v[4] === t).length)
 console.log(`${verses.length} passages (tiers: ${counts.join(' / ')}) → ${path.relative(ROOT, OUT)}`)
+const sceneCounts = {}
+for (const v of verses) sceneCounts[v[6]] = (sceneCounts[v[6]] ?? 0) + 1
+console.log('  scenes:', Object.entries(sceneCounts).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(', '))
 names.forEach((n, t) => {
   const inTopic = verses.filter((v) => v[5] & (1 << t))
   console.log(`  ${n}: ${inTopic.length} (tier 1: ${inTopic.filter((v) => v[4] === 1).length})`)
@@ -443,7 +501,7 @@ if (REVIEW) {
   const lines = chosen.map((c, i) => {
     const tier = i < TIER_1 ? 1 : i < TIER_1 + TIER_2 ? 2 : 3
     const tags = names.filter((_, t) => topicsOf(c) & (1 << t)).join(',')
-    return `${i + 1}\tT${tier}\t${c.key}\t${tags}\t${c.text}`
+    return `${i + 1}\tT${tier}\t${c.key}\t${tags}\t${c.text}\t${sceneOf(c)}`
   })
   fs.writeFileSync(REVIEW, lines.join('\n') + '\n')
 }
