@@ -7,7 +7,8 @@
   - **Share** sends the card as an image (1080 × 1920, the shape of a phone screen and of stories) through the phone's share sheet; where there's none, it copies the verse with its reference. **Save** downloads the image.
   - Topics at the top: Hope, Peace, Strength, Love, Comfort, Joy, Faith, Guidance, Grace and Gratitude, or All.
   - The verses are in the translation being read.
-- **Which verses:** about 1,440 passages that read well on their own, chosen from OpenBible.info's topical Bible (people's votes for the verses that fit a topic), in three tiers. The first 1,200 were read through by hand. All 400 of tier 1 (the best known and loved) come before any of tier 2, and tier 2 before tier 3. Verses seen are remembered, so nothing repeats until everything in the topic has come round.
+- **Which verses:** about 1,300 passages that read well on their own, chosen from OpenBible.info's topical Bible (people's votes for the verses that fit a topic), in three tiers. The first 1,100 were read through by hand. All 400 of tier 1 (the best known and loved) come before any of tier 2, and tier 2 before tier 3. Verses seen are remembered, so nothing repeats until everything in the topic has come round.
+  - Each one means on the card what it means in its chapter, so reading on adds to it rather than contradicting it. Verses usually read out of context are left out (such as Jeremiah 29:11, to exiles about a return 70 years away), as are promises to one person or moment and the advice of Job's friends. "I can do all things through Christ" comes with the verse before it, about being content with much or little.
 - Links to a passage (`#/BSB/PHP/4/6-7`) highlight all its verses.
 
 ## 1.12.1

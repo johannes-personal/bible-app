@@ -12,7 +12,12 @@
 //   reads on its own: it starts and ends a sentence, isn't long, and isn't about judgement.
 //   Passages that stop mid-sentence are extended to the end of it (up to two verses).
 // - A hand review: tiers 1 and 2 were read through, and what doesn't work as a card on its own
-//   is in EXCLUDED below; a few classics are PROMOTED to tier 1.
+//   is in EXCLUDED below; a few classics are PROMOTED to tier 1. A card should make the reader
+//   want to read its chapter, and the chapter should bear out what the card seemed to say: so
+//   out go verses whose usual reading differs from what they mean where they stand (Jeremiah
+//   29:11, Matthew 18:20), promises tied to one person or moment (Abram, Cyrus, Israel's
+//   harvests), the advice of Job's friends, and verses whose "he" or "her" is in another verse.
+//   A few are shown with the verse that gives their sense (CONTEXT).
 //
 // Topics take turns choosing their next best passage, so every topic is well represented at
 // the top. The first TIER_1 chosen are tier 1, the next TIER_2 tier 2. Tier 3 is what's left
@@ -34,7 +39,7 @@ const reviewAt = process.argv.indexOf('--review')
 const REVIEW = reviewAt > 0 ? process.argv[reviewAt + 1] : null
 
 const TIER_1 = 400
-const TIER_2 = 800
+const TIER_2 = 700
 /** Tier 3 stops here, or when no topic has a warm passage left. */
 const TOTAL = 2400
 /** Votes a passage needs in a topic to count for it. */
@@ -89,6 +94,13 @@ function secondRank(text) {
 // Let in by hand: well-loved passages the checks above would turn away (they start mid-sentence,
 // or mention something UNFIT on the way to their point).
 const INCLUDED = new Set(['PHP.1.6', 'JHN.10.10', 'ECC.3.1'])
+
+// Shown with a neighbouring verse that keeps them true to their chapter: "I can do all things"
+// is about being content with much or little; "no eye has seen" goes on to say God has shown it.
+const CONTEXT = new Map([
+  ['PHP.4.13', [12, 13]],
+  ['1CO.2.9', [9, 10]],
+])
 
 // Put in tier 1 by hand: verses everyone knows that the turns below leave lower.
 const PROMOTED = ['PSA.23.1', 'ROM.8.1', 'PSA.51.10', 'ISA.40.8', 'JOS.24.15', 'MAT.5.14']
@@ -214,7 +226,19 @@ const EXCLUDED = new Set([
   'HOS.14.2', 'PRO.13.4', 'EPH.3.13', 'ROM.5.12', '1JN.3.15', 'PRO.22.3', 'MAT.24.21', 'JHN.3.6',
   'PSA.97.5', 'JER.23.23', 'ISA.33.15-16', 'JAS.5.12', 'ECC.11.2', 'COL.1.24', 'JER.8.21', 'PRO.28.9',
   'MAL.3.16', 'GEN.35.17', 'LUK.22.28', 'MAT.22.1-2', 'EXO.3.2', 'ROM.10.2', 'GEN.1.14', 'ZEP.3.3',
-  'ACT.2.41',
+  'ACT.2.41', 'JER.29.11', 'JER.29.14', 'DEU.31.6', 'HAB.2.3', 'ISA.43.18-19', 'MAL.3.10', 'JER.1.5',
+  'JER.1.7-8', 'GEN.12.2', 'GEN.28.15', 'ISA.45.3', 'DAN.10.19', 'EXO.23.25', 'DEU.7.13', 'DEU.8.18',
+  'DEU.8.10', 'LEV.26.6', 'JOL.2.26', 'JOL.2.21', 'JOL.2.23', '2CH.15.7', '2CH.16.9', 'NUM.14.18',
+  'EXO.13.21-22', '2SA.7.28', 'HOS.6.3', 'ISA.30.26', 'ISA.30.29', 'ISA.41.6', 'HAG.2.9', 'JOB.5.17',
+  'JOB.5.18', 'JOB.5.19', 'JOB.5.16', 'JOB.8.7', 'JOB.8.21', 'JOB.11.18', 'JOB.22.21', 'JOB.22.26',
+  'JOB.32.8', 'JOB.33.26', 'JOB.33.28', 'JOB.37.23', 'JOB.12.12', 'JOB.7.7', 'JOB.16.5', 'MAT.18.20',
+  'MAT.21.22', 'MRK.11.23', 'MRK.11.24', 'MRK.5.34', 'LUK.8.48', 'LUK.17.19', 'MAT.9.29', 'LUK.12.12',
+  'LUK.7.35', 'MAT.19.2', 'MAT.2.10', '3JN.1.2', '1TH.4.18', 'ROM.4.20-21', 'HEB.11.16', 'HEB.10.34',
+  'PHP.4.11', 'PSA.21.6', 'PSA.20.6', 'PSA.41.2', 'PSA.41.3', 'PSA.46.5', 'PSA.44.3', 'PSA.132.14',
+  'PSA.132.16', 'PSA.147.13', 'PSA.35.27', 'PSA.102.7', 'PSA.42.3', 'PSA.42.4', 'PSA.13.1', 'PRO.3.16-18',
+  'PRO.4.9', 'REV.14.14', 'REV.2.11', 'JOB.40.2', 'EXO.22.14', '1CO.14.26', '2CO.12.19', 'ZEC.9.15',
+  '1CO.15.24', 'LUK.18.27', 'JHN.15.17', 'PSA.86.15', '2SA.22.33', 'LUK.12.22', 'LUK.12.24', 'LUK.6.23',
+  'MAT.10.39', 'LUK.17.33', 'PSA.113.1', '1JN.1.4', 'PSA.33.1', 'EZK.11.19-20', 'PSA.107.21-22',
 ])
 
 // --- Inputs ---
@@ -279,6 +303,8 @@ const words = (s) => s.split(/\s+/).filter(Boolean).length
 
 /** The passage made whole: extended to the end of its sentence, or null if it can't be. */
 function whole(p) {
+  const context = CONTEXT.get(refOf(p))
+  if (context) p = { ...p, first: context[0], last: context[1] }
   const included = INCLUDED.has(refOf(p))
   // It must start a sentence: the verse before ends one.
   const before = verseText(p.book, p.chapter, p.first - 1)
@@ -341,17 +367,32 @@ const chosen = PROMOTED.map((key) => {
   return c
 })
 const taken = new Set(PROMOTED)
+
+// The same words more than once (the gospels' parallel sayings, a psalm's refrain, "Give thanks
+// to the LORD, for He is good" in six places): only the first one chosen.
+const wordSet = (text) => new Set(text.toLowerCase().match(/[a-z’']+/g) ?? [])
+const chosenWords = chosen.map((c) => wordSet(c.text))
+function repeats(c) {
+  const mine = wordSet(c.text)
+  return chosenWords.some((other) => {
+    let shared = 0
+    for (const w of mine) if (other.has(w)) shared++
+    return shared / (mine.size + other.size - shared) >= 0.6
+  })
+}
+
 /** Topics take turns adding their best passage not yet chosen, until `count` are chosen. */
 function takeTurns(lists, count) {
   const next = lists.map(() => 0)
   while (chosen.length < count) {
     let added = false
     for (const [t, list] of lists.entries()) {
-      while (next[t] < list.length && taken.has(list[next[t]].key)) next[t]++
+      while (next[t] < list.length && (taken.has(list[next[t]].key) || repeats(list[next[t]]))) next[t]++
       if (next[t] >= list.length || chosen.length >= count) continue
       const c = list[next[t]++]
       taken.add(c.key)
       chosen.push(c)
+      chosenWords.push(wordSet(c.text))
       added = true
     }
     if (!added) break

@@ -9,10 +9,10 @@ import { hashFor, inspireHash, parseHash, parseInspireHash } from '../route'
 const passage = (key: string, tier: 1 | 2 | 3): Passage => ({ key, book: 'PSA', chapter: 1, first: 1, last: 1, tier, topics: ['hope'] })
 
 describe('the verse list', () => {
-  it('has three tiers, the first two of 400 and 800, nearly every passage with a topic', () => {
+  it('has three tiers, the first two of 400 and 700, nearly every passage with a topic', () => {
     const count = (tier: number) => PASSAGES.filter((p) => p.tier === tier).length
     expect(count(1)).toBe(400)
-    expect(count(2)).toBe(800)
+    expect(count(2)).toBe(700)
     expect(count(3)).toBeGreaterThan(100)
     expect(new Set(PASSAGES.map((p) => p.key)).size).toBe(PASSAGES.length)
     for (const p of PASSAGES) expect(p.last).toBeGreaterThanOrEqual(p.first)
@@ -21,10 +21,14 @@ describe('the verse list', () => {
   })
 
   it('has well-known verses in tier 1, and something for every topic', () => {
-    for (const key of ['JHN.3.16', 'PSA.23.1', 'JER.29.11', 'PHP.4.13']) {
+    for (const key of ['JHN.3.16', 'PSA.23.1', 'ISA.40.31', 'PHP.4.12-13']) {
       expect(PASSAGES.find((p) => p.key === key)?.tier, key).toBe(1)
     }
     for (const topic of TOPICS) expect(passagesFor(topic).filter((p) => p.tier === 1).length, topic).toBeGreaterThan(30)
+  })
+
+  it('leaves out verses usually read out of context', () => {
+    for (const key of ['JER.29.11', 'MAT.18.20', 'PHP.4.13', 'JOB.8.7']) expect(PASSAGES.some((p) => p.key === key), key).toBe(false)
   })
 
   it('keeps to the books a translation has', () => {
