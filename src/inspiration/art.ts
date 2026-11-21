@@ -564,10 +564,10 @@ export function drawScene(ctx: Ctx, w: number, h: number, scene: Scene) {
       break
     }
     case 'lake': {
-      const horizon = h * (0.6 + random() * 0.05)
+      const horizon = h * (0.67 + random() * 0.04)
       sky(ctx, w, horizon, palette)
       const r = unit * (0.05 + random() * 0.03)
-      const lightY = horizon - unit * (0.05 + random() * 0.09)
+      const lightY = horizon - unit * (0.03 + random() * 0.06)
       glow(ctx, lightX, lightY, unit * 0.9, palette.light, 0.5)
       disc(ctx, lightX, lightY, r, alpha(palette.light, 0.92))
       // Still water: the sky turned upside down, a little darker.
