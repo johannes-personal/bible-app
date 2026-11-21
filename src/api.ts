@@ -64,6 +64,8 @@ export interface FormattedText {
   text: string
   poem?: number
   wordsOfJesus?: boolean
+  /** A psalm's title, given with its first verse. */
+  descriptive?: boolean
 }
 
 export type VerseContent =
@@ -92,6 +94,8 @@ export interface ChapterRef {
   chapter: number
   /** A verse to scroll to, e.g. when following a reference. */
   verse?: number
+  /** The last verse of a passage starting at `verse`, highlighted with it. */
+  verseEnd?: number
   /** The verse is a saved reading position to resume at, rather than a link target. */
   resume?: boolean
 }

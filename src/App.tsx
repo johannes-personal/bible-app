@@ -31,7 +31,7 @@ import { TranslationPicker } from './components/TranslationPicker'
 import { parseChapter } from './content'
 import { useAsync, useElapsed, useMediaQuery, useOnline } from './hooks'
 import { languageKey, languageNames, toBcp47 } from './lang'
-import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, replaceRoute, useRoute } from './route'
+import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, openInspiration, replaceRoute, useRoute } from './route'
 import { BB_NARRATOR } from './biblebrain/api'
 import { isYouVersionId } from './youversion/api'
 import { useSettings } from './settings'
@@ -183,7 +183,8 @@ export default function App() {
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [data, loading, ref.translationId, ref.book, ref.chapter])
 
-  // Start each chapter at the top, or at the verse a link points to (briefly highlighted).
+  // Start each chapter at the top, or at the verse (or verses) a link points to, briefly
+  // highlighted.
   useEffect(() => {
     if (!ref.verse) {
       window.scrollTo(0, 0)
@@ -198,13 +199,18 @@ export default function App() {
       return
     }
     el.scrollIntoView({ block: 'center' })
-    el.classList.add('flash')
-    const timer = setTimeout(() => el.classList.remove('flash'), 2500)
+    const marked = [el]
+    for (let n = ref.verse + 1; n <= (ref.verseEnd ?? 0); n++) {
+      const next = document.getElementById(`v${n}`)
+      if (next) marked.push(next)
+    }
+    for (const v of marked) v.classList.add('flash')
+    const timer = setTimeout(() => marked.forEach((v) => v.classList.remove('flash')), 2500)
     return () => {
       clearTimeout(timer)
-      el.classList.remove('flash')
+      marked.forEach((v) => v.classList.remove('flash'))
     }
-  }, [ref.translationId, ref.book, ref.chapter, ref.verse, ref.resume, loading, data])
+  }, [ref.translationId, ref.book, ref.chapter, ref.verse, ref.verseEnd, ref.resume, loading, data])
 
   const goNext = useCallback(() => next && navigate(next), [next])
   const goPrevious = useCallback(() => previous && navigate(previous), [previous])
@@ -451,6 +457,9 @@ export default function App() {
               <button className="study-link" onClick={openSearch} aria-label="Search" title="Search passages, verses and words (/)">
                 <Icon name="search" />
                 <span>Search</span>
+              </button>
+              <button className="icon-button" onClick={openInspiration} aria-label="Inspiration" title="Inspiration: a verse at a time">
+                <Icon name="sparkle" />
               </button>
               <button className="icon-button" onClick={() => setPanel('settings')} aria-label="Reading settings">
                 <span className="aa" aria-hidden="true">Aa</span>

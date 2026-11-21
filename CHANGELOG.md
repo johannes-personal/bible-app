@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.13.0
+
+- **Inspiration mode**, from the ✦ button in the header: one verse at a time, full screen over a drawn landscape (hills, mountains, the sea, a night sky, dunes or a soft glow), scrolled through like a feed. Swipe up for the next one (or use the arrow keys or the space bar); Escape or ✕ goes back.
+  - **Read in context** opens the chapter in the reader at that verse, with the whole passage highlighted. Going back returns to the same card.
+  - **Share** sends the card as an image (1080 × 1920, the shape of a phone screen and of stories) through the phone's share sheet; where there's none, it copies the verse with its reference. **Save** downloads the image.
+  - Topics at the top: Hope, Peace, Strength, Love, Comfort, Joy, Faith, Guidance, Grace and Gratitude, or All.
+  - The verses are in the translation being read.
+- **Which verses:** about 1,440 passages that read well on their own, chosen from OpenBible.info's topical Bible (people's votes for the verses that fit a topic), in three tiers. The first 1,200 were read through by hand. All 400 of tier 1 (the best known and loved) come before any of tier 2, and tier 2 before tier 3. Verses seen are remembered, so nothing repeats until everything in the topic has come round.
+- Links to a passage (`#/BSB/PHP/4/6-7`) highlight all its verses.
+
 ## 1.12.1
 
 - Faster start: the chapter shows as soon as its text arrives (about a second), instead of waiting for the list of all translations. YouVersion's part of that list takes several seconds when it isn't cached, which made the first visit after each update take around ten seconds.

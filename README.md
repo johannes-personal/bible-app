@@ -13,7 +13,7 @@ A simple, login-free Bible reader with listen-along audio.
   - The verse being read is highlighted and **auto-scrolls** into view. Scroll by hand and it pauses following until you tap **Follow along**.
   - Tap any verse while audio is active to jump there. Speed control, lock-screen controls, and optional continue-to-next-chapter.
 
-Where you left off, and your settings, are remembered in the browser. Links such as `#/BSB/JHN/3` point to a chapter.
+Where you left off, and your settings, are remembered in the browser. Links such as `#/BSB/JHN/3` point to a chapter, `#/BSB/JHN/3/16` to a verse and `#/BSB/PHP/4/6-7` to a passage.
 
 ## Data sources
 
@@ -31,6 +31,15 @@ The word study pages (`#/study`) use an index built from the [Berean Standard Bi
 - `s/*.json`: per 100 Strong's numbers, each word's English renderings, occurrences and the words most often found in the same verses (by log-likelihood);
 - `e/*.json`: per first letter, each English word with its forms and the Strong's numbers it translates.
 - `l/*.json`: the same words' lexicon entries (part of speech, pronunciation, root, Strong's definition, KJV renderings, and the STEPBible senses with verse references).
+
+## Inspiration
+
+The ✦ button in the header opens inspiration mode (`#/inspire`, or `#/inspire/hope` for a topic): one verse at a time, full screen over a drawn landscape, scrolled through like a feed. Each card links to its chapter in the reader, opening at the passage (highlighted), and can be shared or saved as a 1080 × 1920 image.
+
+- **The verses** (`src/inspiration/verses.json`) are chosen by `node scripts/build-inspiration.mjs` from [OpenBible.info's topical Bible](https://www.openbible.info/topics/) (CC BY 4.0): people's votes for the verses that fit topics such as "hope", "anxiety" or "gods love". Each of the app's ten topics (Hope, Peace, Strength, Love, Comfort, Joy, Faith, Guidance, Grace, Gratitude) gathers a handful of theirs. Passages must read on their own in the BSB (`public/word-study/text.txt`): start and end a sentence (those that stop mid-sentence are extended to the end of it), be short, and stay clear of judgement and violence. Topics then take turns picking their best-voted passage, so all are well represented.
+- **Three tiers:** the first 400 picks (tier 1) and the next 800 (tier 2) were read through by hand; what doesn't stand on its own is listed in the script's `EXCLUDED`. Tier 3 (about 240) takes only what passes stricter checks. The feed shows all of tier 1, in a random order, before any of tier 2, and tier 2 before tier 3. Verses seen are remembered on the device (`bible:inspiration-seen`), so none comes back until everything in the topic has been seen.
+- **The text** is the translation being read, fetched like a chapter (passages its books don't have are left out). Psalm titles and "Selah" are left off, and quotation marks the passage leaves open are closed.
+- **The backgrounds** (`src/inspiration/art.ts`) are drawn on a canvas: hills, mountains, the sea, a night sky, dunes or a soft glow, in one of a dozen palettes. The passage seeds the choice, so it always gets the same one, on screen and in the saved image (`src/inspiration/image.ts`), where the verse is set in Playfair Display.
 
 ## Installing and reading offline
 
@@ -73,4 +82,5 @@ src/
   audio/usePlayer.ts   Picks a voice source and drives the active engine
   audio/useAutoscroll.ts  Keeps the current verse in view
   components/          Header pickers, reader, player bar, settings
+  inspiration/         Inspiration mode: the verse list and feed order, card text, drawn scenes, images
 ```
