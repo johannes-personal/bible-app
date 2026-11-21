@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { buildSegments, splitText, verseAt } from '../audio/engines'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { buildSegments, SpeechEngine, splitText, verseAt } from '../audio/engines'
 
 describe('verseAt', () => {
   const starts = [4, 9.7, 22.8, 31.6]
@@ -43,5 +43,90 @@ describe('buildSegments', () => {
       { verseIndex: 1, text: 'de', start: 4 },
     ])
     expect(total).toBe(7)
+  })
+})
+
+describe('SpeechEngine', () => {
+  /** A stand-in for the browser's speech synthesis that speaks nothing until told to. */
+  function fakeSynth() {
+    const synth = {
+      speaking: false,
+      pending: false,
+      paused: false,
+      spoken: [] as { text: string; onstart?: () => void; onend?: () => void }[],
+      getVoices: () => [],
+      speak: vi.fn((u: { text: string }) => synth.spoken.push(u)),
+      cancel: vi.fn(() => {
+        synth.speaking = false
+      }),
+      resume: vi.fn(() => {
+        synth.paused = false
+      }),
+    }
+    class Utterance {
+      text: string
+      constructor(text: string) {
+        this.text = text
+      }
+    }
+    vi.stubGlobal('window', { speechSynthesis: synth })
+    vi.stubGlobal('SpeechSynthesisUtterance', Utterance)
+    return synth
+  }
+  const callbacks = () => ({ onUpdate: vi.fn(), onEnded: vi.fn() })
+
+  // A later clock for each test, so no test starts just after another one's cancel.
+  let clock = Date.UTC(2030, 0, 1)
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime((clock += 60_000))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+  })
+
+  it('speaks at once when nothing was cancelled, keeping the tap iOS needs', async () => {
+    const synth = fakeSynth()
+    new SpeechEngine(['O LORD, our Lord.'], 'en', null, 1, callbacks()).play()
+    expect(synth.speak).toHaveBeenCalledTimes(1)
+  })
+
+  it('waits a moment after a cancel before speaking again', async () => {
+    const synth = fakeSynth()
+    const first = new SpeechEngine(['Psalm seven.'], 'en', null, 1, callbacks())
+    first.play()
+    synth.speaking = true
+    first.destroy() // moving on to the next chapter
+    new SpeechEngine(['Psalm eight.'], 'en', null, 1, callbacks()).play()
+    expect(synth.speak).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(300)
+    expect(synth.spoken.map((u) => u.text)).toEqual(['Psalm seven.', 'Psalm eight.'])
+  })
+
+  it('tries again when nothing starts, then gives up as paused', async () => {
+    const synth = fakeSynth()
+    const cb = callbacks()
+    new SpeechEngine(['O LORD, our Lord.'], 'en', null, 1, cb).play()
+    await vi.advanceTimersByTimeAsync(2600)
+    expect(synth.speak).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(synth.speak).toHaveBeenCalledTimes(2)
+    expect(cb.onUpdate).toHaveBeenLastCalledWith({ status: 'paused' })
+  })
+
+  it('carries on through the segments once speech starts, and resumes a paused synthesizer', async () => {
+    const synth = fakeSynth()
+    synth.paused = true
+    const cb = callbacks()
+    new SpeechEngine(['One.', 'Two.'], 'en', null, 1, cb).play()
+    expect(synth.resume).toHaveBeenCalled()
+    synth.spoken[0].onstart?.()
+    synth.spoken[0].onend?.()
+    synth.spoken[1].onstart?.()
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(synth.speak).toHaveBeenCalledTimes(2)
+    synth.spoken[1].onend?.()
+    expect(cb.onEnded).toHaveBeenCalled()
   })
 })
