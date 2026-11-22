@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.14.0
+
+- **Recent passages** in the book and chapter picker: a row at the top with the last chapters read, newest first (up to eight, not counting the one open). Each shows the verse where reading stopped, e.g. "Isaiah 40:12", and a tap opens it there, that verse at the top. A chapter opened at a verse (John 3:16) keeps that verse until you scroll yourself. They're shown in the translation being read, and a chapter the translation lacks is left out.
+
 ## 1.13.1
 
 - The BSB's recorded narrators (David, Hays and Souer) are back. The Free Use Bible API stopped publishing their verse timings, and the app only offered narrators with timings, so the BSB had just the device voice. Narrators without timings are now offered too. Where each verse starts is estimated from the verses' lengths, so the highlight and autoscroll follow the reading, give or take a second or two.

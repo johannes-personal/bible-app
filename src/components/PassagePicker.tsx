@@ -7,6 +7,7 @@ import { splitMarked } from '../wordstudy/highlight'
 import { Icon } from './Icon'
 import { isTouchScreen } from '../device'
 import { Sheet } from './Sheet'
+import { recentPassages } from '../recent'
 
 interface Props {
   current: ChapterRef
@@ -43,6 +44,34 @@ export function PassagePicker({ current, onSelect, onClose }: Props) {
   const verses = useVerseSearch(reference ? '' : query, books)
   const goToVerse = (v: FoundVerse) => onSelect({ translationId, book: v.book, chapter: v.chapter, verse: v.verse })
 
+  // Chapters read lately (not this one), at the verse where the reader was.
+  const [recent] = useState(recentPassages)
+  const recentRow = (() => {
+    const items = recent.flatMap((p) => {
+      const b = books?.find((x) => x.id === p.book)
+      if (!b || (p.book === current.book && p.chapter === current.chapter)) return []
+      const name = p.book === 'PSA' && b.name === 'Psalms' ? 'Psalm' : b.name
+      return [{ ...p, label: `${name} ${p.chapter}${p.verse ? `:${p.verse}` : ''}` }]
+    })
+    if (!items.length) return null
+    return (
+      <section className="recent" aria-label="Recent">
+        <h3 className="recent-label">Recent</h3>
+        <div className="recent-row">
+          {items.map((p) => (
+            <button
+              key={`${p.book} ${p.chapter}`}
+              className="recent-chip"
+              onClick={() => onSelect(p.verse ? { translationId, book: p.book, chapter: p.chapter, verse: p.verse, resume: true } : { translationId, book: p.book, chapter: p.chapter })}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </section>
+    )
+  })()
+
   const pickBook = (b: Book) => {
     if (b.numberOfChapters === 1) onSelect({ translationId, book: b.id, chapter: chapterNumbers(b)[0] })
     else setBookId(b.id)
@@ -59,6 +88,7 @@ export function PassagePicker({ current, onSelect, onClose }: Props) {
           </button>
         }
       >
+        {recentRow}
         <div className="chapter-grid">
           {chapterNumbers(book).map((n) => {
             const isCurrent = book.id === current.book && n === current.chapter
@@ -103,6 +133,7 @@ export function PassagePicker({ current, onSelect, onClose }: Props) {
         />
       }
     >
+      {!query.trim() && recentRow}
       {loading && !books && <p className="muted center">Loading books…</p>}
       {error && (
         <p className="muted center">

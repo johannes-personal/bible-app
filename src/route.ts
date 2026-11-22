@@ -87,6 +87,15 @@ export function replaceRoute(ref: ChapterRef) {
   navigate(ref.resume ? chapterOf(ref) : ref, true)
 }
 
+/**
+ * Opens a chapter back where reading stopped (that verse at the top, not highlighted), as a new
+ * history entry; the URL shows just the chapter.
+ */
+export function resumeRoute(ref: ChapterRef) {
+  replacement = { ...ref, resume: true }
+  location.hash = hashFor(chapterOf(ref))
+}
+
 export function useRoute(): ChapterRef {
   const [ref, setRef] = useState<ChapterRef>(() => initialRoute(location.hash, load<ChapterRef | null>(LAST_KEY, null)))
 
