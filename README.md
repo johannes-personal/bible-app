@@ -5,7 +5,7 @@ A simple, login-free Bible reader with listen-along audio.
 **Live:** https://the-bible-reader.vercel.app
 
 - **1,200+ translations** in hundreds of languages, searchable and grouped by language (your browser's languages first, then English and Swedish).
-- **Book and chapter picker**, previous/next chapter buttons, and ←/→ keyboard shortcuts.
+- **Book and chapter picker**, with the chapters read lately at the top (each at the verse where reading stopped), previous/next chapter buttons, and ←/→ keyboard shortcuts.
 - **Reading view** with section headings, poetry layout, footnotes, optional red letters, adjustable text size and light/sepia/dark themes.
 - **Listen along** with a per-chapter progress bar you can drag to seek:
   - Recorded human narration (e.g. the Berean Standard Bible's three narrators), following along verse by verse. Where a recording comes without verse timings, where each verse starts is estimated from the verses' lengths.

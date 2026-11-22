@@ -20,6 +20,7 @@ import { Icon } from './components/Icon'
 import { ParallelPane } from './components/ParallelPane'
 import { SaveTranslation } from './components/Offline'
 import { PassagePicker } from './components/PassagePicker'
+import { rememberPassage } from './recent'
 import { PlayerBar } from './components/PlayerBar'
 import { ReaderSearch } from './components/ReaderSearch'
 import type { Anchor } from './components/Popover'
@@ -31,7 +32,7 @@ import { TranslationPicker } from './components/TranslationPicker'
 import { parseChapter } from './content'
 import { useAsync, useElapsed, useMediaQuery, useOnline } from './hooks'
 import { languageKey, languageNames, toBcp47 } from './lang'
-import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, openInspiration, replaceRoute, useRoute } from './route'
+import { chapterOf, FALLBACK_TRANSLATION, hashFor, LAST_KEY, navigate, openInspiration, replaceRoute, resumeRoute, useRoute } from './route'
 import { BB_NARRATOR } from './biblebrain/api'
 import { isYouVersionId } from './youversion/api'
 import { useSettings } from './settings'
@@ -146,6 +147,7 @@ export default function App() {
   useEffect(() => {
     if (!data || loading) return
     save(LAST_KEY, ref.verse ? { ...chapterOf(ref), verse: ref.verse } : chapterOf(ref))
+    rememberPassage({ book: ref.book, chapter: ref.chapter, verse: ref.verse })
     // `ref` is the route that loaded `data`.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [data, loading])
@@ -163,12 +165,21 @@ export default function App() {
     if (!data || loading) return
     const chapter = chapterOf(ref)
     let timer: ReturnType<typeof setTimeout> | undefined
+    // The recent passages keep the verse a link opened until the reader scrolls themselves,
+    // not when the page scrolls to that verse.
+    let touched = false
+    const touch = () => {
+      touched = true
+    }
+    const inputs = ['wheel', 'touchmove', 'keydown', 'pointerdown'] as const
+    for (const e of inputs) window.addEventListener(e, touch, { passive: true })
     const saveTopVerse = () => {
       const top = document.querySelector('.app-header')?.getBoundingClientRect().bottom ?? 0
       const verses = document.querySelectorAll<HTMLElement>('.reader .verse[data-verse]')
       const first = [...verses].find((v) => v.getBoundingClientRect().bottom > top + 8)
       const verse = Number(first?.dataset.verse)
       save(LAST_KEY, verse > 1 ? { ...chapter, verse } : chapter)
+      if (touched) rememberPassage({ book: chapter.book, chapter: chapter.chapter, verse })
     }
     const onScroll = () => {
       clearTimeout(timer)
@@ -178,6 +189,7 @@ export default function App() {
     return () => {
       clearTimeout(timer)
       window.removeEventListener('scroll', onScroll)
+      for (const e of inputs) window.removeEventListener(e, touch)
     }
     // Re-bind per chapter; `ref` changes identity on every navigation.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
@@ -429,7 +441,8 @@ export default function App() {
 
   const selectPassage = (r: ChapterRef) => {
     setPanel(null)
-    navigate(r)
+    if (r.resume) resumeRoute(r)
+    else navigate(r)
   }
 
   return (
